@@ -3,5 +3,5 @@
     "board": "esp32:esp32:esp32thing",
     "programmer": "esp32:esptool",
     "port": "/dev/tty.usbserial-D309CKSH",
-    "sketch": "esp-now-one-to-many/tx-one-to-many.ino"
+    "sketch": "esp-now-one-to-many/tx-one-to-many/tx-one-to-many.ino"
 }

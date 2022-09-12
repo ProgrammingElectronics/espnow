@@ -49,7 +49,7 @@ void InitESPNow() {
 // Scan for receivers in AP mode
 void ScanForReceivers() {
   int8_t scanResults = WiFi.scanNetworks();
-  //reset slaves
+  //reset receivers
   memset(receivers, 0, sizeof(receivers));
   RXCnt = 0;
   Serial.println("");
