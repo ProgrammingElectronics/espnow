@@ -30,29 +30,6 @@ const char *SEL_EFFECT_OPTIONS[SELECT_EFFECT_LENGTH] = {"1. Change Color", "2. C
 #define CHANGE_COLOR_SEL 0
 #define CYLON_SEL 1
 
-// enum STATE
-// {
-//   MAIN_MENU = 0,
-//   LIST_PEERS = 1,
-//   RESCAN = 2,
-//   BROADCAST = 3,
-//   SELECT_EFFECT = 4,
-//   CHANGE_COLOR = 5
-// };
-
-// enum MAIN_MENU
-// {
-//   LIST_PEERS_SEL = 0,
-//   RESCAN_SEL = 1,
-//   BROADCAST_SEL = 2
-// };
-
-// enum SELECT_EFFECT
-// {
-//   CHANGE_COLOR_SEL = 0,
-//   CYLON_SEL = 1
-// };
-
 // Display
 U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* clock=*/SCL, /* data=*/SDA, /* reset=*/U8X8_PIN_NONE); // High speed I2C
 
@@ -63,7 +40,7 @@ volatile bool selectionMade = false;
 volatile unsigned long button_time = 0;
 volatile unsigned long last_button_time = 0;
 
-void makeSelection()
+void incrementSelection()
 {
   button_time = millis();
 
@@ -103,7 +80,7 @@ void setup()
   Serial.begin(115200);
 
   pinMode(SELECTION_BUTTON, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(SELECTION_BUTTON), makeSelection, RISING);
+  attachInterrupt(digitalPinToInterrupt(SELECTION_BUTTON), incrementSelection, RISING);
 
   u8g2.begin();
   u8g2.setFont(u8g2_font_7x13B_tf); // choose a suitable font

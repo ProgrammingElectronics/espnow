@@ -33,27 +33,45 @@
 // Global copy of RXs
 #define NUMRECEIVERS 20
 esp_now_peer_info_t receivers[NUMRECEIVERS] = {};
+char peerSSIDs[20][50]; // Store the SSID of each connected network
+
 int RXCnt = 0;
 
 #define CHANNEL 1
 #define PRINTSCANRESULTS 0
-#define selectionButton 36
-#define MAX_SELECTIONS 3
 
-// Display
-U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* clock=*/SCL, /* data=*/SDA, /* reset=*/U8X8_PIN_NONE); // High speed I2C
+// States
+#define MAIN_MENU 0
+#define LIST_PEERS 1
+#define RESCAN 2
+#define BROADCAST 3
+#define SELECT_EFFECT 4
+#define CHANGE_COLOR 5
+// Main Menu
+#define LIST_PEERS_SEL 0
+#define RESCAN_SEL 1
+#define BROADCAST_SEL 2
+// Select Effect
+#define CHANGE_COLOR_SEL 0
+#define CYLON_SEL 1
+
+const byte INCREMENT_BUTTON = 5;
+const byte MAX_SELECTIONS = 2;
+const byte LINE_SPACING = 5; // space between each line
+const byte MAIN_MENU_LENGTH = 3;
+const byte SELECT_EFFECT_LENGTH = 4;
+const char *MAIN_MENU_OPTIONS[MAIN_MENU_LENGTH] = {"1. List Peers", "2. ReScan", "3. Broadcast"};
+const char *SEL_EFFECT_OPTIONS[SELECT_EFFECT_LENGTH] = {"1. Change Color", "2. Cyclon", "3. Pacifica", "4. Random Reds"};
 
 // Track user button presses
-volatile byte currentSelection = 1;
-
+volatile byte currentSelection = 0;
+volatile bool selectionMade = false;
 // variables to keep track of the timing of recent interrupts
 volatile unsigned long button_time = 0;
 volatile unsigned long last_button_time = 0;
 
-const char *string_list =
-    "1. List peers\n"
-    "2. Rescan for peers\n"
-    "3. Broadcast mode\n";
+// Display
+U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* clock=*/SCL, /* data=*/SDA, /* reset=*/U8X8_PIN_NONE); // High speed I2C
 
 // Init ESP Now with fallback
 void InitESPNow()
@@ -137,6 +155,10 @@ void ScanForReceivers()
         }
         receivers[RXCnt].channel = CHANNEL; // pick a channel
         receivers[RXCnt].encrypt = 0;       // no encryption
+
+        Serial.println(SSID);
+        SSID.toCharArray(peerSSIDs[RXCnt], SSID.length());
+
         RXCnt++;
       }
     }
@@ -284,19 +306,34 @@ void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status)
   Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Delivery Success" : "Delivery Fail");
 }
 
-/**
- * @brief Display main menue options OLED
- *
- */
-void displayMainMenu()
+void displayMenu(const char *menuArray[], byte len)
 {
-  
-  u8g2.drawButtonUTF8(62, 20, U8G2_BTN_INV, 0,  2,  2, "Btn" );
+  u8g2.clearBuffer(); // clear the internal memory
 
+  int spacing = LINE_SPACING + u8g2.getAscent() + abs(u8g2.getDescent());
+  for (int i = 0; i < len; i++)
+  {
+    u8g2.drawButtonUTF8(0, spacing, currentSelection == i ? U8G2_BTN_INV : U8G2_BTN_BW0, 0, 2, 2, menuArray[i]);
+    spacing += LINE_SPACING + u8g2.getAscent() + abs(u8g2.getDescent());
+  }
 
+  u8g2.sendBuffer(); // transfer internal memory to the display
 }
 
-void IRAM_ATTR makeSelection()
+void displayPeers()
+{
+  u8g2.clearBuffer();
+  int spacing = LINE_SPACING + u8g2.getAscent() + abs(u8g2.getDescent());
+  for (int i = 0; i < RXCnt; i++)
+  {
+    u8g2.drawButtonUTF8(0, spacing, currentSelection == i ? U8G2_BTN_INV : U8G2_BTN_BW0, 0, 2, 2, peerSSIDs[i]);
+    spacing += LINE_SPACING + u8g2.getAscent() + abs(u8g2.getDescent());
+  }
+
+  u8g2.sendBuffer(); // transfer internal memory to the display
+}
+
+void IRAM_ATTR incrementSelection()
 {
   button_time = millis();
   if (button_time - last_button_time > 250)
@@ -304,20 +341,19 @@ void IRAM_ATTR makeSelection()
     currentSelection++;
     if (currentSelection > MAX_SELECTIONS)
     {
-      currentSelection = 1;
+      currentSelection = 0;
     }
     Serial.println(currentSelection);
     last_button_time = button_time;
   }
-  
 }
 
 void setup()
 {
-  Serial.begin(115200);
+  Serial.begin(230400);
 
-  pinMode(13, INPUT_PULLUP);
-  attachInterrupt(13, makeSelection, FALLING);
+  pinMode(INCREMENT_BUTTON, INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(INCREMENT_BUTTON), incrementSelection, FALLING);
 
   // Set device in STA mode to begin with
   WiFi.mode(WIFI_STA);
@@ -329,10 +365,36 @@ void setup()
   ScanForReceivers();
 
   u8g2.begin();
-  u8g2.setFont(u8g2_font_smart_patrol_nbp_tf); // choose a suitable font
+  u8g2.setFont(u8g2_font_7x13B_tf); // choose a suitable font
 }
 
 void loop()
 {
-  displayMainMenu();
+  static byte previousSelection = 1;
+  // static byte currentState = MAIN_MENU;
+  static byte currentState = LIST_PEERS;
+
+  // Only update display if selection changes
+  if (previousSelection != currentSelection)
+  {
+    previousSelection = currentSelection;
+
+    switch (currentState)
+    {
+    case (MAIN_MENU):
+
+      // Display menu based on state
+      displayMenu(MAIN_MENU_OPTIONS, MAIN_MENU_LENGTH);
+
+      // Change state if selection made
+      if (selectionMade && currentSelection == LIST_PEERS_SEL)
+      {
+        currentState = LIST_PEERS;
+      }
+      break;
+    case (LIST_PEERS):
+      displayPeers();
+      break;
+    }
+  }
 }
