@@ -1,7 +1,6 @@
 {
-    "configuration": "FlashFreq=80,PartitionScheme=default,UploadSpeed=921600,DebugLevel=none",
-    "board": "esp32:esp32:esp32thing",
-    "programmer": "esp32:esptool",
-    "port": "/dev/tty.usbserial-D309CKSH",
-    "sketch": "esp-now-one-to-many/tx-one-to-many/tx-one-to-many.ino"
+    "board": "arduino:avr:uno",
+    "programmer": "arduino:avrisp",
+    "port": "/dev/tty.usbmodem143201",
+    "sketch": "esp-now-one-to-many/UNO-menu-testing/UNO-menu-testing.ino"
 }

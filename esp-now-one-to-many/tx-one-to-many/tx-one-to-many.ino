@@ -37,9 +37,23 @@ int RXCnt = 0;
 
 #define CHANNEL 1
 #define PRINTSCANRESULTS 0
+#define selectionButton 36
+#define MAX_SELECTIONS 3
 
 // Display
 U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* clock=*/SCL, /* data=*/SDA, /* reset=*/U8X8_PIN_NONE); // High speed I2C
+
+// Track user button presses
+volatile byte currentSelection = 1;
+
+// variables to keep track of the timing of recent interrupts
+volatile unsigned long button_time = 0;
+volatile unsigned long last_button_time = 0;
+
+const char *string_list =
+    "1. List peers\n"
+    "2. Rescan for peers\n"
+    "3. Broadcast mode\n";
 
 // Init ESP Now with fallback
 void InitESPNow()
@@ -270,9 +284,41 @@ void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status)
   Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Delivery Success" : "Delivery Fail");
 }
 
+/**
+ * @brief Display main menue options OLED
+ *
+ */
+void displayMainMenu()
+{
+  
+  u8g2.drawButtonUTF8(62, 20, U8G2_BTN_INV, 0,  2,  2, "Btn" );
+
+
+}
+
+void IRAM_ATTR makeSelection()
+{
+  button_time = millis();
+  if (button_time - last_button_time > 250)
+  {
+    currentSelection++;
+    if (currentSelection > MAX_SELECTIONS)
+    {
+      currentSelection = 1;
+    }
+    Serial.println(currentSelection);
+    last_button_time = button_time;
+  }
+  
+}
+
 void setup()
 {
   Serial.begin(115200);
+
+  pinMode(13, INPUT_PULLUP);
+  attachInterrupt(13, makeSelection, FALLING);
+
   // Set device in STA mode to begin with
   WiFi.mode(WIFI_STA);
   // Init ESPNow with a fallback logic
@@ -280,35 +326,13 @@ void setup()
   // Once ESPNow is successfully Init, we will register for Send CB to
   // get the status of Trasnmitted packet
   esp_now_register_send_cb(OnDataSent);
+  ScanForReceivers();
 
   u8g2.begin();
-
-  u8g2.clearBuffer();                  // clear the internal memory
-  u8g2.setFont(u8g2_font_ncenB08_tr);  // choose a suitable font
-  u8g2.drawStr(0, 10, "Hello World!"); // write something to the internal memory
-  u8g2.sendBuffer();
+  u8g2.setFont(u8g2_font_smart_patrol_nbp_tf); // choose a suitable font
 }
 
 void loop()
 {
-  // In the loop we scan for receivers
-  ScanForReceivers();
-  // If receiver is found, it would be populate in `receiver` variable
-  // We will check if `receiver` is defined and then we proceed further
-  if (RXCnt > 0)
-  { // check if receiver channel is defined
-    // `receiver` is defined
-    // Add receiver as peer if it has not been added already
-    manageReceiver();
-    // pair success or already paired
-    // Send data to device
-    sendData();
-  }
-  else
-  {
-    // No receiver found to process
-  }
-
-  // wait for 3seconds to run the logic again
-  delay(1000);
+  displayMainMenu();
 }
