@@ -156,7 +156,6 @@ void ScanForReceivers()
         receivers[RXCnt].channel = CHANNEL; // pick a channel
         receivers[RXCnt].encrypt = 0;       // no encryption
 
-        Serial.println(SSID);
         SSID.toCharArray(peerSSIDs[RXCnt], SSID.length());
 
         RXCnt++;
@@ -324,9 +323,14 @@ void displayPeers()
 {
   u8g2.clearBuffer();
   int spacing = LINE_SPACING + u8g2.getAscent() + abs(u8g2.getDescent());
-  for (int i = 0; i < RXCnt; i++)
+
+  //Only show 3 item at once
+  int start = currentSelection/3 * 3;
+  int end = start + 3 > RXCnt ? RXCnt : start + 3;
+  
+  for (int i = start; i < end; i++)
   {
-    u8g2.drawButtonUTF8(0, spacing, currentSelection == i ? U8G2_BTN_INV : U8G2_BTN_BW0, 0, 2, 2, peerSSIDs[i]);
+    u8g2.drawButtonUTF8(1, spacing, currentSelection == i ? U8G2_BTN_INV : U8G2_BTN_BW0, 0, 2, 2, peerSSIDs[i]);
     spacing += LINE_SPACING + u8g2.getAscent() + abs(u8g2.getDescent());
   }
 
@@ -339,10 +343,7 @@ void IRAM_ATTR incrementSelection()
   if (button_time - last_button_time > 250)
   {
     currentSelection++;
-    if (currentSelection > MAX_SELECTIONS)
-    {
-      currentSelection = 0;
-    }
+
     Serial.println(currentSelection);
     last_button_time = button_time;
   }
@@ -383,6 +384,12 @@ void loop()
     {
     case (MAIN_MENU):
 
+      // Limit Selection
+      if (currentSelection > MAIN_MENU_LENGTH)
+      {
+        currentSelection = 0;
+      }
+
       // Display menu based on state
       displayMenu(MAIN_MENU_OPTIONS, MAIN_MENU_LENGTH);
 
@@ -392,7 +399,14 @@ void loop()
         currentState = LIST_PEERS;
       }
       break;
+
     case (LIST_PEERS):
+
+      // Limit Selection
+      if (currentSelection >= RXCnt)
+      {
+        currentSelection = 0;
+      }
       displayPeers();
       break;
     }

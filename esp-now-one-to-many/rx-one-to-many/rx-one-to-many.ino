@@ -9,31 +9,28 @@
  * 
  */
 
-#include <esp_now.h>
-#include <WiFi.h>
+#include <espnow.h>
+#include <ESP8266WiFi.h>
 
 #define CHANNEL 1
 
 // Init ESP Now with fallback
 void InitESPNow() {
   WiFi.disconnect();
-  if (esp_now_init() == ESP_OK) {
+  if (esp_now_init() == ERR_OK) {
     Serial.println("ESPNow Init Success");
   }
   else {
     Serial.println("ESPNow Init Failed");
-    // Retry InitESPNow, add a counte and then restart?
-    // InitESPNow();
-    // or Simply Restart
     ESP.restart();
   }
 }
 
 // config AP SSID
 void configDeviceAP() {
-  String Prefix = "RX:";
+  String Prefix = "RX_Spa:";
   String Mac = WiFi.macAddress();
-  String SSID = Prefix + Mac;
+  String SSID = Prefix;
   String Password = "123456789";
   bool result = WiFi.softAP(SSID.c_str(), Password.c_str(), CHANNEL, 0);
   if (!result) {
@@ -59,7 +56,7 @@ void setup() {
 }
 
 // callback when data is recv from Transmitter
-void OnDataRecv(const uint8_t *mac_addr, const uint8_t *data, int data_len) {
+void OnDataRecv(uint8_t *mac_addr, uint8_t *data, uint8_t data_len) {
   char macStr[18];
   snprintf(macStr, sizeof(macStr), "%02x:%02x:%02x:%02x:%02x:%02x",
            mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
