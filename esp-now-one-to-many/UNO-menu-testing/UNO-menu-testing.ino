@@ -40,7 +40,7 @@ volatile bool selectionMade = false;
 volatile unsigned long button_time = 0;
 volatile unsigned long last_button_time = 0;
 
-void incrementSelection()
+void incrementButton()
 {
   button_time = millis();
 
@@ -80,7 +80,7 @@ void setup()
   Serial.begin(115200);
 
   pinMode(SELECTION_BUTTON, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(SELECTION_BUTTON), incrementSelection, RISING);
+  attachInterrupt(digitalPinToInterrupt(SELECTION_BUTTON), incrementButton, RISING);
 
   u8g2.begin();
   u8g2.setFont(u8g2_font_7x13B_tf); // choose a suitable font

@@ -40,7 +40,6 @@ int RXCnt = 0;
 #define CHANNEL 1
 #define PRINTSCANRESULTS 0
 
-// States
 #define MAIN_MENU 0
 #define LIST_PEERS 1
 #define RESCAN 2
@@ -56,6 +55,7 @@ int RXCnt = 0;
 #define CYLON_SEL 1
 
 const byte INCREMENT_BUTTON = 5;
+const byte SELECT_BUTTON = 6;
 const byte MAX_SELECTIONS = 2;
 const byte LINE_SPACING = 5; // space between each line
 const byte MAIN_MENU_LENGTH = 3;
@@ -63,12 +63,50 @@ const byte SELECT_EFFECT_LENGTH = 4;
 const char *MAIN_MENU_OPTIONS[MAIN_MENU_LENGTH] = {"1. List Peers", "2. ReScan", "3. Broadcast"};
 const char *SEL_EFFECT_OPTIONS[SELECT_EFFECT_LENGTH] = {"1. Change Color", "2. Cyclon", "3. Pacifica", "4. Random Reds"};
 
+/**
+ * List Peers
+ *    n peers (based on number of boards in network)
+ *      select color
+ *         hue -> sends hue to n board
+ *         sat -> sends hue to n board
+ *         val -> sends hue to n board
+ *      cyclon -> turns on cyclon effect in n board
+ *      pacifica effect -> turns on pacifica effect in n board
+ *      Random reds -> turns on Random effect in n board
+ * ReScan -> performs ScanForReceivers()
+ * Broadcast
+ *  select color
+ *    hue -> broadcasts hue to all boards
+ *    sat -> broadcasts sat to all boards
+ *    val -> broadcasts val to all boards
+ *  cyclon -> turns on cyclon effect in all boards
+ *  pacifica effect -> turns on pacifica effect in all boards
+ *  Random reds -> turns on Random effect in all boards
+ */
+
+/**
+
+Main
+    List Peers
+    ReScan
+    Broadcast
+List Peers
+    n peers
+x peer
+
+ReScan
+  Show "Scan Compelete" -> Go Back to Main Menu
+Broadcast
+ */
+
 // Track user button presses
 volatile byte currentSelection = 0;
 volatile bool selectionMade = false;
 // variables to keep track of the timing of recent interrupts
-volatile unsigned long button_time = 0;
-volatile unsigned long last_button_time = 0;
+volatile unsigned long incr_button_time = 0;
+volatile unsigned long sel_button_time = 0;
+volatile unsigned long last_incr_button_time = 0;
+volatile unsigned long last_sel_button_time = 0;
 
 // Display
 U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* clock=*/SCL, /* data=*/SDA, /* reset=*/U8X8_PIN_NONE); // High speed I2C
@@ -324,10 +362,10 @@ void displayPeers()
   u8g2.clearBuffer();
   int spacing = LINE_SPACING + u8g2.getAscent() + abs(u8g2.getDescent());
 
-  //Only show 3 item at once
-  int start = currentSelection/3 * 3;
+  /**todo Change this so it adjust for screen size */
+  // Only show 3 item at once
+  int start = currentSelection / 3 * 3;
   int end = start + 3 > RXCnt ? RXCnt : start + 3;
-  
   for (int i = start; i < end; i++)
   {
     u8g2.drawButtonUTF8(1, spacing, currentSelection == i ? U8G2_BTN_INV : U8G2_BTN_BW0, 0, 2, 2, peerSSIDs[i]);
@@ -337,78 +375,112 @@ void displayPeers()
   u8g2.sendBuffer(); // transfer internal memory to the display
 }
 
-void IRAM_ATTR incrementSelection()
+void IRAM_ATTR incrementButton()
 {
-  button_time = millis();
-  if (button_time - last_button_time > 250)
+  incr_button_time = millis();
+  if (incr_button_time - last_incr_button_time > 250)
   {
     currentSelection++;
 
     Serial.println(currentSelection);
-    last_button_time = button_time;
+    last_incr_button_time = incr_button_time;
   }
+}
+
+void IRAM_ATTR selectButton()
+{
+  Serial.println(selectionMade);
+  selectionMade = true;
+  Serial.println(selectionMade);
 }
 
 void setup()
 {
-  Serial.begin(230400);
+  Serial.begin(115200);
 
   pinMode(INCREMENT_BUTTON, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(INCREMENT_BUTTON), incrementSelection, FALLING);
+  pinMode(SELECT_BUTTON, INPUT_PULLUP);
+
+  attachInterrupt(digitalPinToInterrupt(INCREMENT_BUTTON), incrementButton, FALLING);
+  attachInterrupt(digitalPinToInterrupt(SELECT_BUTTON), selectButton, FALLING);
 
   // Set device in STA mode to begin with
   WiFi.mode(WIFI_STA);
+  Serial.println("Wifi Mode Set.");
   // Init ESPNow with a fallback logic
   InitESPNow();
+  Serial.println("ESPNow Init");
   // Once ESPNow is successfully Init, we will register for Send CB to
   // get the status of Trasnmitted packet
   esp_now_register_send_cb(OnDataSent);
   ScanForReceivers();
+  Serial.print("RXs scanned, found: ");
+  Serial.print(RXCnt);
 
   u8g2.begin();
   u8g2.setFont(u8g2_font_7x13B_tf); // choose a suitable font
+  Serial.print("Setup Complete");
 }
 
 void loop()
 {
+  static char buffer[50];
   static byte previousSelection = 1;
-  // static byte currentState = MAIN_MENU;
-  static byte currentState = LIST_PEERS;
+  static byte currentState = MAIN_MENU;
 
-  // Only update display if selection changes
-  if (previousSelection != currentSelection)
+  switch (currentState)
   {
-    previousSelection = currentSelection;
+  case (MAIN_MENU):
 
-    switch (currentState)
+    // State info
+    sprintf(buffer, "Main Menu -> State: %d, Sel: %d, PreSel: %d", currentState, currentSelection, previousSelection);
+    Serial.println(buffer);
+
+    // Limit Selection
+    if (currentSelection >= MAIN_MENU_LENGTH)
     {
-    case (MAIN_MENU):
-
-      // Limit Selection
-      if (currentSelection > MAIN_MENU_LENGTH)
-      {
-        currentSelection = 0;
-      }
-
-      // Display menu based on state
-      displayMenu(MAIN_MENU_OPTIONS, MAIN_MENU_LENGTH);
-
-      // Change state if selection made
-      if (selectionMade && currentSelection == LIST_PEERS_SEL)
-      {
-        currentState = LIST_PEERS;
-      }
-      break;
-
-    case (LIST_PEERS):
-
-      // Limit Selection
-      if (currentSelection >= RXCnt)
-      {
-        currentSelection = 0;
-      }
-      displayPeers();
-      break;
+      currentSelection = 0;
     }
+
+    // Display Menu
+    if (previousSelection != currentSelection)
+    {
+      displayMenu(MAIN_MENU_OPTIONS, MAIN_MENU_LENGTH);
+      previousSelection = currentSelection;
+    }
+
+    // Handle selection
+    if (selectionMade)
+    {
+      switch (currentSelection)
+      {
+      case (LIST_PEERS_SEL):
+        currentState = LIST_PEERS;
+        previousSelection = currentSelection + 1; // Make sure new menu is displayed
+        break;
+      }
+      selectionMade = false;
+    }
+    break;
+
+  case (LIST_PEERS):
+
+    // State info
+    sprintf(buffer, "List Peers Menu -> State: %d, Sel: %d, PreSel: %d", currentState, currentSelection, previousSelection);
+    Serial.println(buffer);
+
+    // Limit Selection
+    if (currentSelection >= RXCnt)
+    {
+      currentSelection = 0;
+    }
+
+    if (previousSelection != currentSelection)
+    {
+      displayPeers();
+      previousSelection = currentSelection;
+    }
+
+    break;
   }
 }
