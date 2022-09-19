@@ -50,6 +50,7 @@ int RXCnt = 0;
 
 const byte INCREMENT_BUTTON = 5;
 const byte SELECT_BUTTON = 6;
+const int DEBOUNCE = 250;
 const byte MAX_SELECTIONS = 2;
 const byte LINE_SPACING = 5; // space between each line
 const byte MAIN_MENU_LENGTH = 3;
@@ -356,11 +357,11 @@ void displayPeers()
 {
   u8g2.clearBuffer();
   int spacing = LINE_SPACING + u8g2.getAscent() + abs(u8g2.getDescent());
-  
+
   // Only show 3 items at once
   int start = currentSelection / NUM_PEERS_TO_DISPLAY * NUM_PEERS_TO_DISPLAY;
   int end = start + NUM_PEERS_TO_DISPLAY > RXCnt + BACK_BUTTON_SPACER ? RXCnt + BACK_BUTTON_SPACER : start + NUM_PEERS_TO_DISPLAY;
-  
+
   Serial.print("End ->");
   Serial.println(end);
   Serial.print("RXcnt ->");
@@ -388,7 +389,7 @@ void displayPeers()
 void IRAM_ATTR incrementButton()
 {
   incr_button_time = millis();
-  if (incr_button_time - last_incr_button_time > 250)
+  if (incr_button_time - last_incr_button_time > DEBOUNCE)
   {
     currentSelection++;
 
@@ -399,9 +400,13 @@ void IRAM_ATTR incrementButton()
 
 void IRAM_ATTR selectButton()
 {
-  Serial.println(selectionMade);
-  selectionMade = true;
-  Serial.println(selectionMade);
+  sel_button_time = millis();
+  if (sel_button_time - last_sel_button_time > DEBOUNCE)
+  {
+    selectionMade = true;
+    Serial.println(selectionMade);
+    last_sel_button_time = sel_button_time;
+  }
 }
 
 void setup()
@@ -459,18 +464,18 @@ void loop()
       previousSelection = currentSelection;
     }
 
-    // Handle selection
-    if (selectionMade)
+    // Handle selections
+    if (selectionMade && currentSelection == LIST_PEERS_SEL)
     {
-      switch (currentSelection)
-      {
-      case (LIST_PEERS_SEL):
-        currentState = LIST_PEERS;
-        previousSelection = currentSelection + 1; // Make sure new menu is displayed
-        break;
-      }
+      currentState = LIST_PEERS;
+      previousSelection = currentSelection + 1; // Make sure new menu is displayed
       selectionMade = false;
     }
+    else
+    {
+      selectionMade = false;
+    }
+
     break;
 
   case (LIST_PEERS):
@@ -489,6 +494,18 @@ void loop()
     {
       displayPeers();
       previousSelection = currentSelection;
+    }
+
+    // Handle selection
+    if (selectionMade && currentSelection == RXCnt /*Back Button Pressed*/)
+    {
+      currentState = MAIN_MENU;
+      previousSelection = currentSelection + 1; // Make sure new menu is displayed
+      selectionMade = false;
+    }
+    else
+    {
+      selectionMade = false;
     }
 
     break;
