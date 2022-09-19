@@ -9,16 +9,6 @@
  *
  */
 
-/**
- * todo
- * - Bring in example code and change to verbage
- * - Add lcd
- *    -pins
- * -
- *
- *
- */
-
 #include <esp_now.h>
 #include <WiFi.h>
 #include <U8g2lib.h>
@@ -32,9 +22,9 @@
 
 // Global copy of RXs
 #define NUMRECEIVERS 20
+
 esp_now_peer_info_t receivers[NUMRECEIVERS] = {};
 char peerSSIDs[20][50]; // Store the SSID of each connected network
-
 int RXCnt = 0;
 
 #define CHANNEL 1
@@ -53,6 +43,10 @@ int RXCnt = 0;
 // Select Effect
 #define CHANGE_COLOR_SEL 0
 #define CYLON_SEL 1
+
+// List Peers menu options
+#define NUM_PEERS_TO_DISPLAY 3
+#define BACK_BUTTON_SPACER 1
 
 const byte INCREMENT_BUTTON = 5;
 const byte SELECT_BUTTON = 6;
@@ -102,6 +96,7 @@ Broadcast
 // Track user button presses
 volatile byte currentSelection = 0;
 volatile bool selectionMade = false;
+
 // variables to keep track of the timing of recent interrupts
 volatile unsigned long incr_button_time = 0;
 volatile unsigned long sel_button_time = 0;
@@ -361,14 +356,29 @@ void displayPeers()
 {
   u8g2.clearBuffer();
   int spacing = LINE_SPACING + u8g2.getAscent() + abs(u8g2.getDescent());
+  
+  // Only show 3 items at once
+  int start = currentSelection / NUM_PEERS_TO_DISPLAY * NUM_PEERS_TO_DISPLAY;
+  int end = start + NUM_PEERS_TO_DISPLAY > RXCnt + BACK_BUTTON_SPACER ? RXCnt + BACK_BUTTON_SPACER : start + NUM_PEERS_TO_DISPLAY;
+  
+  Serial.print("End ->");
+  Serial.println(end);
+  Serial.print("RXcnt ->");
+  Serial.println(RXCnt);
 
-  /**todo Change this so it adjust for screen size */
-  // Only show 3 item at once
-  int start = currentSelection / 3 * 3;
-  int end = start + 3 > RXCnt ? RXCnt : start + 3;
   for (int i = start; i < end; i++)
   {
-    u8g2.drawButtonUTF8(1, spacing, currentSelection == i ? U8G2_BTN_INV : U8G2_BTN_BW0, 0, 2, 2, peerSSIDs[i]);
+    if (i == RXCnt)
+    {
+      u8g2.drawButtonUTF8(1, spacing, currentSelection == i ? U8G2_BTN_INV : U8G2_BTN_BW0, 0, 2, 2, "Back");
+      Serial.println("end printed");
+    }
+    else
+    {
+      u8g2.drawButtonUTF8(1, spacing, currentSelection == i ? U8G2_BTN_INV : U8G2_BTN_BW0, 0, 2, 2, peerSSIDs[i]);
+      Serial.println("RX printed ");
+      Serial.println(i);
+    }
     spacing += LINE_SPACING + u8g2.getAscent() + abs(u8g2.getDescent());
   }
 
@@ -466,11 +476,11 @@ void loop()
   case (LIST_PEERS):
 
     // State info
-    sprintf(buffer, "List Peers Menu -> State: %d, Sel: %d, PreSel: %d", currentState, currentSelection, previousSelection);
-    Serial.println(buffer);
+    // sprintf(buffer, "List Peers Menu -> State: %d, Sel: %d, PreSel: %d", currentState, currentSelection, previousSelection);
+    // Serial.println(buffer);
 
     // Limit Selection
-    if (currentSelection >= RXCnt)
+    if (currentSelection >= RXCnt + BACK_BUTTON_SPACER)
     {
       currentSelection = 0;
     }
