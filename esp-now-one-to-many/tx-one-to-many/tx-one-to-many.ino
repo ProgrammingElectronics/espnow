@@ -28,7 +28,7 @@ char peerSSIDs[20][50];  // Store the SSID of each connected network
 int RXCnt = 0;
 
 #define CHANNEL 1
-#define PRINTSCANRESULTS 0
+#define PRINTSCANRESULTS 1
 
 #define MAIN_MENU 0
 #define LIST_PEERS 1
@@ -56,8 +56,29 @@ const byte MAX_SELECTIONS = 2;
 const byte LINE_SPACING = 5;  // space between each line
 const byte MAIN_MENU_LENGTH = 3;
 const byte SELECT_EFFECT_LENGTH = 5;
+const byte COLOR_OPTIONS_LENGTH = 8;
 const char *MAIN_MENU_OPTIONS[MAIN_MENU_LENGTH] = { "1. List Peers", "2. ReScan", "3. Broadcast" };
 const char *SEL_EFFECT_OPTIONS[SELECT_EFFECT_LENGTH] = { "1. Change Color", "2. Cyclon", "3. Pacifica", "4. Random Reds", "5. Back" };
+const char *COLOR_OPTIONS[COLOR_OPTIONS_LENGTH] = { "Red", "Orange", "Yellow", "Green", "Aqua", "Blue", "Purple", "Pink" };
+const byte COLOR_VALUES[COLOR_OPTIONS_LENGTH] = { 0, 32, 64, 96, 128, 160, 192, 224 };
+
+const byte ONE_TO_ONE = 0;
+const byte BROADCASTING = 1;
+
+const byte SOLID_COLOR = 0;
+const byte CYCLON = 1;
+const byte PACIFICA = 2;
+const byte RANDOM_REDS = 3;
+
+typedef struct neopixel_data {
+  byte effect;
+  bool display = true;
+  byte hue = 100;
+  byte saturation = 255;
+  byte value = 255;
+} neopixel_data;
+
+neopixel_data data_out;
 
 /**
  * List Peers
@@ -242,9 +263,11 @@ void manageReceiver() {
   }
 }
 
+
 uint8_t data = 0;
+
 // send data
-void sendData() {
+void sendDataOld() {
   data++;
   for (int i = 0; i < RXCnt; i++) {
     const uint8_t *peer_addr = receivers[i].peer_addr;
@@ -271,6 +294,59 @@ void sendData() {
       Serial.println("Not sure what happened");
     }
     delay(100);
+  }
+} 
+
+void displayError(esp_err_t result) {
+  Serial.print("Send Status: ");
+  if (result == ESP_OK) {
+    Serial.println("Success");
+  } else if (result == ESP_ERR_ESPNOW_NOT_INIT) {
+    // How did we get so far!!
+    Serial.println("ESPNOW not Init.");
+  } else if (result == ESP_ERR_ESPNOW_ARG) {
+    Serial.println("Invalid Argument");
+  } else if (result == ESP_ERR_ESPNOW_INTERNAL) {
+    Serial.println("Internal Error");
+  } else if (result == ESP_ERR_ESPNOW_NO_MEM) {
+    Serial.println("ESP_ERR_ESPNOW_NO_MEM");
+  } else if (result == ESP_ERR_ESPNOW_NOT_FOUND) {
+    Serial.println("Peer not found.");
+  } else {
+    Serial.println("Not sure what happened");
+  }
+}
+
+void sendData(byte RX_sel, byte MODE_sel) {
+
+  const uint8_t *peer_addr;
+  const uint8_t *mac_addr;
+
+  if (MODE_sel == ONE_TO_ONE) {
+    peer_addr = receivers[RX_sel].peer_addr;
+    mac_addr = receivers[RX_sel].peer_addr;
+    char macStr[18];
+    snprintf(macStr, sizeof(macStr), "%02x:%02x:%02x:%02x:%02x:%02x",
+             mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
+    Serial.print("Last Packet Sent to: ");
+    Serial.println(macStr);
+
+    esp_err_t result = esp_now_send(peer_addr, (uint8_t *)&data_out, sizeof(data_out));
+    displayError(result);
+  }
+
+  if (MODE_sel == BROADCASTING) {
+
+    for (int i = 0; i < RXCnt; i++) {
+      const uint8_t *peer_addr = receivers[i].peer_addr;
+      if (i == 0) {  // print only for first receiver
+        Serial.print("Sending: ");
+        Serial.println(data);
+      }
+      esp_err_t result = esp_now_send(peer_addr, (uint8_t *)&data_out, sizeof(data_out));
+      displayError(result);
+      delay(100);
+    }
   }
 }
 
@@ -428,7 +504,7 @@ void loop() {
         currentState = SELECT_EFFECT;
         previousSelection = currentSelection + 1;  // Make sure new menu is displayed
         selectionMade = false;
-        newRXSelected = true; // Make sure select effect knows a new RX has been selected
+        newRXSelected = true;  // Make sure select effect knows a new RX has been selected
       } else {
         selectionMade = false;
       }
@@ -441,11 +517,10 @@ void loop() {
       sprintf(buffer, "Select Effect Menu -> State: %d, Sel: %d, PreSel: %d", currentState, currentSelection, previousSelection);
       Serial.println(buffer);
 
-      
       if (newRXSelected) {
-        RX_selected = currentSelection; // This will be the rx we apply the effects to
-        currentSelection = 0; // Aligns cursor with first menu option in select effect
-        newRXSelected = false; 
+        RX_selected = currentSelection;  // This will be the rx we apply the effects to
+        currentSelection = 0;            // Aligns cursor with first menu option in select effect
+        newRXSelected = false;
       }
 
       // Limit Selection
@@ -463,8 +538,42 @@ void loop() {
         currentState = LIST_PEERS;
         currentSelection = 0;  // Start at first menu item in Peer menu
         selectionMade = false;
+      } else if (selectionMade && currentSelection == CHANGE_COLOR_SEL) {
+        currentState = CHANGE_COLOR;
+        previousSelection = currentSelection + 1;  // Make sure new menu is displayed
+        selectionMade = false;
       } else {
         selectionMade = false;
+      }
+
+      break;
+
+    case (CHANGE_COLOR):
+
+      // State info
+      // sprintf(buffer, "CHANGE_COLOR Menu -> State: %d, Sel: %d, PreSel: %d", currentState, currentSelection, previousSelection);
+      // Serial.println(buffer);
+
+      // Limit Selection
+      if (currentSelection >= COLOR_OPTIONS_LENGTH) {
+        currentSelection = 0;
+      }
+
+      // Display Color
+      if (previousSelection != currentSelection) {
+        Serial.print("Color sent to: ");
+        Serial.print(RX_selected);
+
+        int spacing = LINE_SPACING + u8g2.getAscent() + abs(u8g2.getDescent());
+        u8g2.clearBuffer();  // clear the internal memory
+        u8g2.drawButtonUTF8(10, spacing, U8G2_BTN_INV, 0, 2, 2, COLOR_OPTIONS[currentSelection]);
+        u8g2.sendBuffer();  // transfer internal memory to the display
+        previousSelection = currentSelection;
+
+        data_out.effect = SOLID_COLOR;
+        data_out.hue = COLOR_VALUES[currentSelection];
+        //sendData(RX_selected, ONE_TO_ONE);
+        sendDataOld();
       }
 
       break;

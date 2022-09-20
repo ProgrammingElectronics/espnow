@@ -19,85 +19,80 @@
 
 #define CHANNEL 1
 
+const byte SOLID_COLOR = 0;
+const byte CYCLON = 1;
+const byte PACIFICA = 2;
+const byte RANDOM_REDS = 3;
+
 // pins
-const byte DATA_PIN = 6; // neo-pixel data pin
+const byte DATA_PIN = 6;  // neo-pixel data pin
 
 // LED array
 const byte NUM_LEDS = 12;
 CRGB leds[NUM_LEDS];
 
-typedef struct neopixel_data
-{
+typedef struct neopixel_data {
+  byte effect;
   bool display = true;
-  int hue;
-  int saturation;
-  int value;
+  byte hue = 100;
+  byte saturation = 255;
+  byte value = 255;
 } neopixel_data;
 
 // Where incoming data is stored
 neopixel_data data;
 
 // Init ESP Now with fallback
-void InitESPNow()
-{
+void InitESPNow() {
   WiFi.disconnect();
-  if (esp_now_init() == ERR_OK)
-  {
+  if (esp_now_init() == ERR_OK) {
     Serial.println("ESPNow Init Success");
-  }
-  else
-  {
+  } else {
     Serial.println("ESPNow Init Failed");
     ESP.restart();
   }
 }
 
 // config AP SSID
-void configDeviceAP()
-{
+void configDeviceAP() {
   String Prefix = "RX_Spa:";
   String Mac = WiFi.macAddress();
   String SSID = Prefix;
   String Password = "123456789";
   bool result = WiFi.softAP(SSID.c_str(), Password.c_str(), CHANNEL, 0);
-  if (!result)
-  {
+  if (!result) {
     Serial.println("AP Config failed.");
-  }
-  else
-  {
+  } else {
     Serial.println("AP Config Success. Broadcasting with AP: " + String(SSID));
   }
 }
 
 // callback when data is recv from Transmitter
-void OnDataRecv(uint8_t *mac_addr, uint8_t *data, uint8_t data_len)
-{
+void OnDataRecv(uint8_t *mac_addr, uint8_t *dataIn, uint8_t data_len) {
+
+  memcpy(&data, dataIn, sizeof data);
+
   char macStr[18];
   snprintf(macStr, sizeof(macStr), "%02x:%02x:%02x:%02x:%02x:%02x",
            mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
   Serial.print("Last Packet Recv from: ");
   Serial.println(macStr);
   Serial.print("Last Packet Recv Data: ");
-  Serial.println(*data);
+  Serial.println(data.hue);
   Serial.println("");
 }
 
-void fadeall()
-{
-  for (int i = 0; i < NUM_LEDS; i++)
-  {
+void fadeall() {
+  for (int i = 0; i < NUM_LEDS; i++) {
     leds[i].nscale8(250);
   }
 }
 
-void cyclon()
-{
+void cyclon() {
   static uint8_t hue = 0;
   Serial.print("x");
   // First slide the led in one direction
-  for (int i = 0; i < NUM_LEDS; i++)
-  {
+  for (int i = 0; i < NUM_LEDS; i++) {
     // Set the i'th led to red
     leds[i] = CHSV(hue++, 255, 255);
     // Show the leds
@@ -111,8 +106,7 @@ void cyclon()
   Serial.print("x");
 
   // Now go in the other direction.
-  for (int i = (NUM_LEDS)-1; i >= 0; i--)
-  {
+  for (int i = (NUM_LEDS)-1; i >= 0; i--) {
     // Set the i'th led to red
     leds[i] = CHSV(hue++, 255, 255);
     // Show the leds
@@ -125,8 +119,7 @@ void cyclon()
   }
 }
 
-void setup()
-{
+void setup() {
   Serial.begin(115200);
 
   // Set device in AP mode to begin with
@@ -145,26 +138,24 @@ void setup()
   FastLED.addLeds<NEOPIXEL, DATA_PIN>(leds, NUM_LEDS);
   FastLED.setBrightness(84);
 
-  for (int i = 0; i < NUM_LEDS; i++)
-  {
+  for (int i = 0; i < NUM_LEDS; i++) {
     leds[i] = CRGB::Black;
   }
   FastLED.show();
 }
 
-void loop()
-{
-  static bool show = true;
+void loop() {
 
-  if (show)
-  {
-    for (int i = 0; i < NUM_LEDS; i++)
-    {
-      leds[i] = CRGB::Black;
+  static byte previousEffect = data.effect;
+  static byte previousHue = data.hue;
+
+  if (data.effect == SOLID_COLOR && data.hue != previousHue) {
+
+    previousHue = data.hue;
+
+    for (int i = 0; i < NUM_LEDS; i++) {
+      leds[i] = CHSV(data.hue, data.saturation, data.value);
     }
     FastLED.show();
-
-    show = false;
   }
-  // cyclon ();
 }
