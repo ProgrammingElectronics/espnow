@@ -285,22 +285,6 @@ void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
   Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Delivery Success" : "Delivery Fail");
 }
 
-/*
-void displayMenu(const char *menuArray[], byte len)
-{
-  u8g2.clearBuffer(); // clear the internal memory
-
-  int spacing = LINE_SPACING + u8g2.getAscent() + abs(u8g2.getDescent());
-  for (int i = 0; i < len; i++)
-  {
-    u8g2.drawButtonUTF8(0, spacing, currentSelection == i ? U8G2_BTN_INV : U8G2_BTN_BW0, 0, 2, 2, menuArray[i]);
-    spacing += LINE_SPACING + u8g2.getAscent() + abs(u8g2.getDescent());
-  }
-
-  u8g2.sendBuffer(); // transfer internal memory to the display
-}
-*/
-
 void displayMenu(const char *menuArray[], byte len) {
   u8g2.clearBuffer();  // clear the internal memory
 
@@ -329,11 +313,8 @@ void displayPeers() {
   for (int i = start; i < end; i++) {
     if (i == RXCnt) {
       u8g2.drawButtonUTF8(1, spacing, currentSelection == i ? U8G2_BTN_INV : U8G2_BTN_BW0, 0, 2, 2, "Back");
-      Serial.println("end printed");
     } else {
       u8g2.drawButtonUTF8(1, spacing, currentSelection == i ? U8G2_BTN_INV : U8G2_BTN_BW0, 0, 2, 2, peerSSIDs[i]);
-      Serial.println("RX printed ");
-      Serial.println(i);
     }
     spacing += LINE_SPACING + u8g2.getAscent() + abs(u8g2.getDescent());
   }
@@ -345,7 +326,6 @@ void IRAM_ATTR incrementButton() {
   incr_button_time = millis();
   if (incr_button_time - last_incr_button_time > DEBOUNCE) {
     currentSelection++;
-
     Serial.println(currentSelection);
     last_incr_button_time = incr_button_time;
   }
@@ -391,6 +371,8 @@ void loop() {
   static char buffer[50];
   static byte previousSelection = 1;
   static byte currentState = MAIN_MENU;
+  static bool newRXSelected = false;
+  static byte RX_selected = 0;
 
   switch (currentState) {
     case (MAIN_MENU):
@@ -442,10 +424,11 @@ void loop() {
         currentState = MAIN_MENU;
         previousSelection = currentSelection + 1;  // Make sure new menu is displayed
         selectionMade = false;
-      } else if (selectionMade) {
+      } else if (selectionMade) { /* Specific peer selected*/
         currentState = SELECT_EFFECT;
         previousSelection = currentSelection + 1;  // Make sure new menu is displayed
         selectionMade = false;
+        newRXSelected = true; // Make sure select effect knows a new RX has been selected
       } else {
         selectionMade = false;
       }
@@ -458,7 +441,12 @@ void loop() {
       sprintf(buffer, "Select Effect Menu -> State: %d, Sel: %d, PreSel: %d", currentState, currentSelection, previousSelection);
       Serial.println(buffer);
 
-      byte RX_Selected = currentSelection;
+      
+      if (newRXSelected) {
+        RX_selected = currentSelection; // This will be the rx we apply the effects to
+        currentSelection = 0; // Aligns cursor with first menu option in select effect
+        newRXSelected = false; 
+      }
 
       // Limit Selection
       if (currentSelection >= SELECT_EFFECT_LENGTH) {
@@ -469,6 +457,16 @@ void loop() {
         displayMenu(SEL_EFFECT_OPTIONS, SELECT_EFFECT_LENGTH);
         previousSelection = currentSelection;
       }
+
+      // Handle selection
+      if (selectionMade && currentSelection == SELECT_EFFECT_LENGTH - 1 /*Back Button Pressed*/) {
+        currentState = LIST_PEERS;
+        currentSelection = 0;  // Start at first menu item in Peer menu
+        selectionMade = false;
+      } else {
+        selectionMade = false;
+      }
+
       break;
   }
 }
