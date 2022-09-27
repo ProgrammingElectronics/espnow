@@ -484,7 +484,8 @@ void loop() {
         selectionMade = false;
       }
       if (selectionMade && currentSelection == BROADCAST_SEL) {
-        currentState = BROADCAST;
+        isBroadcasting = true;
+        currentState = SELECT_EFFECT;
         currentSelection = 0;
         previousSelection = currentSelection + 1;  // Make sure new menu is displayed
         selectionMade = false;
@@ -519,6 +520,7 @@ void loop() {
         selectionMade = false;
       } else if (selectionMade) { /* Specific peer selected*/
         currentState = SELECT_EFFECT;
+
         previousSelection = currentSelection + 1;  // Make sure new menu is displayed
         selectionMade = false;
         newRXSelected = true;  // Make sure select effect knows a new RX has been selected
@@ -549,36 +551,36 @@ void loop() {
 
       break;
 
-    case (BROADCAST):
-      isBroadcasting = true;
-      //State info
-      sprintf(buffer, "Select Effect Menu -> State: %d, Sel: %d, PreSel: %d", currentState, currentSelection, previousSelection);
-      Serial.println(buffer);
+    // case (BROADCAST):
+    //   isBroadcasting = true;
+    //   //State info
+    //   sprintf(buffer, "Select Effect Menu -> State: %d, Sel: %d, PreSel: %d", currentState, currentSelection, previousSelection);
+    //   Serial.println(buffer);
 
-      // Limit Selection
-      if (currentSelection >= SELECT_EFFECT_LENGTH) {
-        currentSelection = 0;
-      }
+    //   // Limit Selection
+    //   if (currentSelection >= SELECT_EFFECT_LENGTH) {
+    //     currentSelection = 0;
+    //   }
 
-      if (previousSelection != currentSelection) {
-        displayMenu(SEL_EFFECT_OPTIONS, SELECT_EFFECT_LENGTH);
-        previousSelection = currentSelection;
-      }
+    //   if (previousSelection != currentSelection) {
+    //     displayMenu(SEL_EFFECT_OPTIONS, SELECT_EFFECT_LENGTH);
+    //     previousSelection = currentSelection;
+    //   }
 
-      // Handle selection
-      if (selectionMade && currentSelection == SELECT_EFFECT_LENGTH - 1 /*Back Button Pressed*/) {
-        currentState = MAIN_MENU;
-        currentSelection = 0;  // Start at first menu item in Peer menu
-        selectionMade = false;
-      } else if (selectionMade && currentSelection == CHANGE_COLOR_SEL) {
-        currentState = CHANGE_COLOR;
-        previousSelection = currentSelection + 1;  // Make sure new menu is displayed
-        selectionMade = false;
-      } else {
-        selectionMade = false;
-      }
+    //   // Handle selection
+    //   if (selectionMade && currentSelection == SELECT_EFFECT_LENGTH - 1 /*Back Button Pressed*/) {
+    //     currentState = MAIN_MENU;
+    //     currentSelection = 0;  // Start at first menu item in Peer menu
+    //     selectionMade = false;
+    //   } else if (selectionMade && currentSelection == CHANGE_COLOR_SEL) {
+    //     currentState = CHANGE_COLOR;
+    //     previousSelection = currentSelection + 1;  // Make sure new menu is displayed
+    //     selectionMade = false;
+    //   } else {
+    //     selectionMade = false;
+    //   }
 
-      break;
+    //   break;
 
     case (SELECT_EFFECT):
 
