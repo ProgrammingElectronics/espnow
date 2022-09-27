@@ -43,6 +43,8 @@ int RXCnt = 0;
 // Select Effect
 #define CHANGE_COLOR_SEL 0
 #define CYLON_SEL 1
+#define PACIFICA_SEL 2
+#define RANDOM_REDS_SEL 3
 
 // List Peers menu options
 #define NUM_PEERS_TO_DISPLAY 3
@@ -66,7 +68,7 @@ const byte ONE_TO_ONE = 0;
 const byte BROADCASTING = 1;
 
 const byte SOLID_COLOR = 0;
-const byte CYCLON = 1;
+const byte CYLON = 1;
 const byte PACIFICA = 2;
 const byte RANDOM_REDS = 3;
 
@@ -608,6 +610,14 @@ void loop() {
       } else if (selectionMade && currentSelection == CHANGE_COLOR_SEL) {
         currentState = CHANGE_COLOR;
         previousSelection = currentSelection + 1;  // Make sure new menu is displayed
+        selectionMade = false;
+      } else if (selectionMade && currentSelection == CYLON_SEL) {
+        data_out.effect = CYLON;
+        sendData(RX_selected, isBroadcasting ? BROADCASTING : ONE_TO_ONE);
+        selectionMade = false;
+      } else if (selectionMade && currentSelection == PACIFICA_SEL) {
+        data_out.effect = PACIFICA;
+        sendData(RX_selected, isBroadcasting ? BROADCASTING : ONE_TO_ONE);
         selectionMade = false;
       } else {
         selectionMade = false;
