@@ -451,6 +451,7 @@ void loop() {
   static byte currentState = MAIN_MENU;
   static bool newRXSelected = false;
   static byte RX_selected = 0;
+  static bool isBroadcasting = false;
 
   switch (currentState) {
     case (MAIN_MENU):
@@ -492,6 +493,8 @@ void loop() {
       break;
 
     case (LIST_PEERS):
+
+      isBroadcasting = false;
 
       //State info
       sprintf(buffer, "List Peers Menu -> State: %d, Sel: %d, PreSel: %d", currentState, currentSelection, previousSelection);
@@ -545,7 +548,7 @@ void loop() {
       break;
 
     case (BROADCAST):
-
+      isBroadcasting = true;
       //State info
       sprintf(buffer, "Select Effect Menu -> State: %d, Sel: %d, PreSel: %d", currentState, currentSelection, previousSelection);
       Serial.println(buffer);
@@ -572,7 +575,7 @@ void loop() {
       } else {
         selectionMade = false;
       }
-      
+
       break;
 
     case (SELECT_EFFECT):
@@ -599,7 +602,7 @@ void loop() {
 
       // Handle selection
       if (selectionMade && currentSelection == SELECT_EFFECT_LENGTH - 1 /*Back Button Pressed*/) {
-        currentState = LIST_PEERS;
+        currentState = isBroadcasting ? MAIN_MENU : LIST_PEERS;
         currentSelection = 0;  // Start at first menu item in Peer menu
         selectionMade = false;
       } else if (selectionMade && currentSelection == CHANGE_COLOR_SEL) {
@@ -636,7 +639,7 @@ void loop() {
 
         data_out.effect = SOLID_COLOR;
         data_out.hue = COLOR_VALUES[currentSelection];
-        sendData(RX_selected, ONE_TO_ONE);
+        sendData(RX_selected, isBroadcasting ? BROADCASTING : ONE_TO_ONE);
       }
 
       // Handle selection
