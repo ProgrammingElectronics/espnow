@@ -8,11 +8,10 @@
  * @copyright Copyright (c) 2022
  *
  */
-
 //#define FASTLED_ESP8266_RAW_PIN_ORDER
-#define FASTLED_ESP8266_NODEMCU_PIN_ORDER
+//#define FASTLED_ESP8266_NODEMCU_PIN_ORDER
 
-#define FASTLED_ESP8266_D1_PIN_ORDER
+//#define FASTLED_ESP8266_D1_PIN_ORDER
 #include <FastLED.h>
 #include <espnow.h>
 #include <ESP8266WiFi.h>
@@ -25,7 +24,8 @@ const byte PACIFICA = 2;
 const byte RANDOM_REDS = 3;
 
 // pins
-const byte DATA_PIN = 6;  // neo-pixel data pin
+// Adafruit Feather Huzzah - pin 12
+const byte DATA_PIN = 12;
 
 // LED array
 const byte NUM_LEDS = 12;
@@ -55,7 +55,7 @@ void InitESPNow() {
 
 // config AP SSID
 void configDeviceAP() {
-  String Prefix = "RX_Spa:";
+  String Prefix = "RX_Lab:";
   String Mac = WiFi.macAddress();
   String SSID = Prefix;
   String Password = "123456789";
@@ -129,23 +129,28 @@ void setup() {
   // This is the mac address of the Receiver in AP Mode
   Serial.print("AP MAC: ");
   Serial.println(WiFi.softAPmacAddress());
+  Serial.print("SSID: ");
+  Serial.println();
   // Init ESPNow with a fallback logic
   InitESPNow();
   // Once ESPNow is successfully Init, we will register for recv CB to
   // get recv packer info.
   esp_now_register_recv_cb(OnDataRecv);
 
-  FastLED.addLeds<NEOPIXEL, DATA_PIN>(leds, NUM_LEDS);
+  //FastLED.addLeds<NEOPIXEL, DATA_PIN>(leds, NUM_LEDS);
+  //FastLED.addLeds<WS2812,DATA_PIN,RGB>(leds,NUM_LEDS);
+  FastLED.addLeds<WS2812B, DATA_PIN, GRB>(leds, NUM_LEDS);
   FastLED.setBrightness(84);
 
+// This does not work... I don't know why?
   for (int i = 0; i < NUM_LEDS; i++) {
-    leds[i] = CRGB::Black;
+    leds[i] = CHSV(255, 255, 255);
   }
   FastLED.show();
+
 }
 
 void loop() {
-
   static byte previousEffect = data.effect;
   static byte previousHue = data.hue;
 

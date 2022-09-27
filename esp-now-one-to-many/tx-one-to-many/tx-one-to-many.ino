@@ -270,12 +270,14 @@ uint8_t data = 0;
 void sendDataOld() {
   data++;
   for (int i = 0; i < RXCnt; i++) {
-    const uint8_t *peer_addr = receivers[i].peer_addr;
+    //const uint8_t *peer_addr = receivers[i].peer_addr;
+    const uint8_t *peer_addr = receivers[0].peer_addr;
     if (i == 0) {  // print only for first receiver
       Serial.print("Sending: ");
       Serial.println(data);
     }
-    esp_err_t result = esp_now_send(peer_addr, &data, sizeof(data));
+    esp_err_t result = esp_now_send(peer_addr, (uint8_t *)&data_out, sizeof(data_out));
+    //esp_err_t result = esp_now_send(peer_addr, &data, sizeof(data));
     Serial.print("Send Status: ");
     if (result == ESP_OK) {
       Serial.println("Success");
@@ -317,19 +319,17 @@ void displayError(esp_err_t result) {
   }
 }
 
+// Testing -> MAC of adafruit board 5E:CF:7F:C6:9D:C8
 void sendData(byte RX_sel, byte MODE_sel) {
 
-  const uint8_t *peer_addr;
-  const uint8_t *mac_addr;
-
   if (MODE_sel == ONE_TO_ONE) {
-    peer_addr = receivers[RX_sel].peer_addr;
-    mac_addr = receivers[RX_sel].peer_addr;
-    char macStr[18];
-    snprintf(macStr, sizeof(macStr), "%02x:%02x:%02x:%02x:%02x:%02x",
-             mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
-    Serial.print("Last Packet Sent to: ");
-    Serial.println(macStr);
+    
+    Serial.println("Mode Sel = one-to-one");
+
+    const uint8_t *peer_addr = receivers[RX_sel].peer_addr;
+
+    Serial.print("Sending to SSID: ");
+    Serial.println(peerSSIDs[RX_sel]);
 
     esp_err_t result = esp_now_send(peer_addr, (uint8_t *)&data_out, sizeof(data_out));
     displayError(result);
@@ -435,6 +435,8 @@ void setup() {
   // get the status of Trasnmitted packet
   esp_now_register_send_cb(OnDataSent);
   ScanForReceivers();
+  manageReceiver();
+  
   Serial.print("RXs scanned, found: ");
   Serial.print(RXCnt);
 
@@ -572,8 +574,8 @@ void loop() {
 
         data_out.effect = SOLID_COLOR;
         data_out.hue = COLOR_VALUES[currentSelection];
-        //sendData(RX_selected, ONE_TO_ONE);
-        sendDataOld();
+        sendData(RX_selected, ONE_TO_ONE);
+        
       }
 
       break;
