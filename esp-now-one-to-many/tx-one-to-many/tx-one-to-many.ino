@@ -578,6 +578,15 @@ void loop() {
         
       }
 
+      // Handle selection
+      if (selectionMade) {
+        currentState = SELECT_EFFECT;
+        currentSelection = 0;  // Start at first menu item in Peer menu
+        previousSelection = currentSelection + 1;  // Make sure new menu is displayed
+        selectionMade = false;
+      }
+        
+
       break;
   }
 }
