@@ -55,7 +55,10 @@ void InitESPNow() {
 
 // config AP SSID
 void configDeviceAP() {
-  String Prefix = "RX_Lab:";
+  //String Prefix = "RX_Ada_1:";
+  //String Prefix = "RX_Ada_2:";
+  //String Prefix = "RX_NodeMCU:";
+  String Prefix = "RX_D1MiniClone:";
   String Mac = WiFi.macAddress();
   String SSID = Prefix;
   String Password = "123456789";

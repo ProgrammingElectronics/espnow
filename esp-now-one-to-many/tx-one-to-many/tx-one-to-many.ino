@@ -297,7 +297,7 @@ void sendDataOld() {
     }
     delay(100);
   }
-} 
+}
 
 void displayError(esp_err_t result) {
   Serial.print("Send Status: ");
@@ -323,7 +323,7 @@ void displayError(esp_err_t result) {
 void sendData(byte RX_sel, byte MODE_sel) {
 
   if (MODE_sel == ONE_TO_ONE) {
-    
+
     Serial.println("Mode Sel = one-to-one");
 
     const uint8_t *peer_addr = receivers[RX_sel].peer_addr;
@@ -436,7 +436,7 @@ void setup() {
   esp_now_register_send_cb(OnDataSent);
   ScanForReceivers();
   manageReceiver();
-  
+
   Serial.print("RXs scanned, found: ");
   Serial.print(RXCnt);
 
@@ -475,6 +475,16 @@ void loop() {
         currentState = LIST_PEERS;
         previousSelection = currentSelection + 1;  // Make sure new menu is displayed
         selectionMade = false;
+      }
+      if (selectionMade && currentSelection == RESCAN_SEL) {
+        currentState = RESCAN;
+        selectionMade = false;
+      }
+      if (selectionMade && currentSelection == BROADCAST_SEL) {
+        currentState = BROADCAST;
+        currentSelection = 0;
+        previousSelection = currentSelection + 1;  // Make sure new menu is displayed
+        selectionMade = false;
       } else {
         selectionMade = false;
       }
@@ -511,6 +521,58 @@ void loop() {
         selectionMade = false;
       }
 
+      break;
+
+    case (RESCAN):
+      //State info
+      sprintf(buffer, "Select Effect Menu -> State: %d, Sel: %d, PreSel: %d", currentState, currentSelection, previousSelection);
+      Serial.println(buffer);
+
+      Serial.println("Rescanning!!!");
+
+      u8g2.clearBuffer();
+      u8g2.drawButtonUTF8(1, 10, U8G2_BTN_INV, 0, 2, 2, "Scanning...");
+      u8g2.sendBuffer();
+
+      ScanForReceivers();
+      manageReceiver();
+
+      currentState = MAIN_MENU;
+      currentSelection = 0;
+      previousSelection = currentSelection + 1;  // Make sure new menu is displayed
+      selectionMade = false;
+
+      break;
+
+    case (BROADCAST):
+
+      //State info
+      sprintf(buffer, "Select Effect Menu -> State: %d, Sel: %d, PreSel: %d", currentState, currentSelection, previousSelection);
+      Serial.println(buffer);
+
+      // Limit Selection
+      if (currentSelection >= SELECT_EFFECT_LENGTH) {
+        currentSelection = 0;
+      }
+
+      if (previousSelection != currentSelection) {
+        displayMenu(SEL_EFFECT_OPTIONS, SELECT_EFFECT_LENGTH);
+        previousSelection = currentSelection;
+      }
+
+      // Handle selection
+      if (selectionMade && currentSelection == SELECT_EFFECT_LENGTH - 1 /*Back Button Pressed*/) {
+        currentState = MAIN_MENU;
+        currentSelection = 0;  // Start at first menu item in Peer menu
+        selectionMade = false;
+      } else if (selectionMade && currentSelection == CHANGE_COLOR_SEL) {
+        currentState = CHANGE_COLOR;
+        previousSelection = currentSelection + 1;  // Make sure new menu is displayed
+        selectionMade = false;
+      } else {
+        selectionMade = false;
+      }
+      
       break;
 
     case (SELECT_EFFECT):
@@ -575,17 +637,16 @@ void loop() {
         data_out.effect = SOLID_COLOR;
         data_out.hue = COLOR_VALUES[currentSelection];
         sendData(RX_selected, ONE_TO_ONE);
-        
       }
 
       // Handle selection
       if (selectionMade) {
         currentState = SELECT_EFFECT;
-        currentSelection = 0;  // Start at first menu item in Peer menu
+        currentSelection = 0;                      // Start at first menu item in Peer menu
         previousSelection = currentSelection + 1;  // Make sure new menu is displayed
         selectionMade = false;
       }
-        
+
 
       break;
   }
