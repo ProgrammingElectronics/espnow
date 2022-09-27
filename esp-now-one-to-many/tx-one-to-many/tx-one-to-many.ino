@@ -619,6 +619,10 @@ void loop() {
         data_out.effect = PACIFICA;
         sendData(RX_selected, isBroadcasting ? BROADCASTING : ONE_TO_ONE);
         selectionMade = false;
+      } else if (selectionMade && currentSelection == RANDOM_REDS_SEL) {
+        data_out.effect = RANDOM_REDS;
+        sendData(RX_selected, isBroadcasting ? BROADCASTING : ONE_TO_ONE);
+        selectionMade = false;
       } else {
         selectionMade = false;
       }
