@@ -82,42 +82,6 @@ typedef struct neopixel_data {
 
 neopixel_data data_out;
 
-/**
- * List Peers
- *    n peers (based on number of boards in network)
- *      select color
- *         hue -> sends hue to n board
- *         sat -> sends hue to n board
- *         val -> sends hue to n board
- *      cyclon -> turns on cyclon effect in n board
- *      pacifica effect -> turns on pacifica effect in n board
- *      Random reds -> turns on Random effect in n board
- * ReScan -> performs ScanForReceivers()
- * Broadcast
- *  select color
- *    hue -> broadcasts hue to all boards
- *    sat -> broadcasts sat to all boards
- *    val -> broadcasts val to all boards
- *  cyclon -> turns on cyclon effect in all boards
- *  pacifica effect -> turns on pacifica effect in all boards
- *  Random reds -> turns on Random effect in all boards
- */
-
-/**
-
-Main
-    List Peers
-    ReScan
-    Broadcast
-List Peers
-    n peers
-x peer
-
-ReScan
-  Show "Scan Compelete" -> Go Back to Main Menu
-Broadcast
- */
-
 // Track user button presses
 volatile byte currentSelection = 0;
 volatile bool selectionMade = false;
@@ -266,41 +230,6 @@ void manageReceiver() {
 }
 
 
-uint8_t data = 0;
-
-// send data
-void sendDataOld() {
-  data++;
-  for (int i = 0; i < RXCnt; i++) {
-    //const uint8_t *peer_addr = receivers[i].peer_addr;
-    const uint8_t *peer_addr = receivers[0].peer_addr;
-    if (i == 0) {  // print only for first receiver
-      Serial.print("Sending: ");
-      Serial.println(data);
-    }
-    esp_err_t result = esp_now_send(peer_addr, (uint8_t *)&data_out, sizeof(data_out));
-    //esp_err_t result = esp_now_send(peer_addr, &data, sizeof(data));
-    Serial.print("Send Status: ");
-    if (result == ESP_OK) {
-      Serial.println("Success");
-    } else if (result == ESP_ERR_ESPNOW_NOT_INIT) {
-      // How did we get so far!!
-      Serial.println("ESPNOW not Init.");
-    } else if (result == ESP_ERR_ESPNOW_ARG) {
-      Serial.println("Invalid Argument");
-    } else if (result == ESP_ERR_ESPNOW_INTERNAL) {
-      Serial.println("Internal Error");
-    } else if (result == ESP_ERR_ESPNOW_NO_MEM) {
-      Serial.println("ESP_ERR_ESPNOW_NO_MEM");
-    } else if (result == ESP_ERR_ESPNOW_NOT_FOUND) {
-      Serial.println("Peer not found.");
-    } else {
-      Serial.println("Not sure what happened");
-    }
-    delay(100);
-  }
-}
-
 void displayError(esp_err_t result) {
   Serial.print("Send Status: ");
   if (result == ESP_OK) {
@@ -343,7 +272,7 @@ void sendData(byte RX_sel, byte MODE_sel) {
       const uint8_t *peer_addr = receivers[i].peer_addr;
       if (i == 0) {  // print only for first receiver
         Serial.print("Sending: ");
-        Serial.println(data);
+        Serial.println(data_out.effect);
       }
       esp_err_t result = esp_now_send(peer_addr, (uint8_t *)&data_out, sizeof(data_out));
       displayError(result);
@@ -551,37 +480,6 @@ void loop() {
 
       break;
 
-    // case (BROADCAST):
-    //   isBroadcasting = true;
-    //   //State info
-    //   sprintf(buffer, "Select Effect Menu -> State: %d, Sel: %d, PreSel: %d", currentState, currentSelection, previousSelection);
-    //   Serial.println(buffer);
-
-    //   // Limit Selection
-    //   if (currentSelection >= SELECT_EFFECT_LENGTH) {
-    //     currentSelection = 0;
-    //   }
-
-    //   if (previousSelection != currentSelection) {
-    //     displayMenu(SEL_EFFECT_OPTIONS, SELECT_EFFECT_LENGTH);
-    //     previousSelection = currentSelection;
-    //   }
-
-    //   // Handle selection
-    //   if (selectionMade && currentSelection == SELECT_EFFECT_LENGTH - 1 /*Back Button Pressed*/) {
-    //     currentState = MAIN_MENU;
-    //     currentSelection = 0;  // Start at first menu item in Peer menu
-    //     selectionMade = false;
-    //   } else if (selectionMade && currentSelection == CHANGE_COLOR_SEL) {
-    //     currentState = CHANGE_COLOR;
-    //     previousSelection = currentSelection + 1;  // Make sure new menu is displayed
-    //     selectionMade = false;
-    //   } else {
-    //     selectionMade = false;
-    //   }
-
-    //   break;
-
     case (SELECT_EFFECT):
 
       //State info
@@ -607,7 +505,7 @@ void loop() {
       // Handle selection
       if (selectionMade && currentSelection == SELECT_EFFECT_LENGTH - 1 /*Back Button Pressed*/) {
         currentState = isBroadcasting ? MAIN_MENU : LIST_PEERS;
-        currentSelection = 0;  // Start at first menu item in Peer menu
+        currentSelection = 0;  // Start at first menu item
         selectionMade = false;
       } else if (selectionMade && currentSelection == CHANGE_COLOR_SEL) {
         currentState = CHANGE_COLOR;
