@@ -520,15 +520,10 @@ void loop() {
         currentSelection = 0;
       }
 
-      // Display Color
+      // Display menu and send color data
       if (previousSelection != currentSelection) {
-        Serial.print("Color sent to: ");
-        Serial.print(RX_selected);
 
-        int spacing = LINE_SPACING + u8g2.getAscent() + abs(u8g2.getDescent());
-        u8g2.clearBuffer();  // clear the internal memory
-        u8g2.drawButtonUTF8(10, spacing, U8G2_BTN_INV, 0, 2, 2, COLOR_OPTIONS[currentSelection]);
-        u8g2.sendBuffer();  // transfer internal memory to the display
+        displayMenu(COLOR_OPTIONS, COLOR_OPTIONS_LENGTH);
         previousSelection = currentSelection;
 
         data_out.effect = SOLID_COLOR;
@@ -543,7 +538,6 @@ void loop() {
         previousSelection = currentSelection + 1;  // Make sure new menu is displayed
         selectionMade = false;
       }
-
 
       break;
   }
