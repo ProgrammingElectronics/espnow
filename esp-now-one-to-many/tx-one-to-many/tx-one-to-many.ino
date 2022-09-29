@@ -387,10 +387,6 @@ void loop() {
   switch (currentState) {
     case (MAIN_MENU):
 
-      // State info
-      sprintf(buffer, "Main Menu -> State: %d, Sel: %d, PreSel: %d", currentState, currentSelection, previousSelection);
-      Serial.println(buffer);
-
       // Limit Selection
       if (currentSelection >= MAIN_MENU_LENGTH) {
         currentSelection = 0;
@@ -403,34 +399,25 @@ void loop() {
       }
 
       // Handle selections
-      if (selectionMade && currentSelection == LIST_PEERS_SEL) {
-        currentState = LIST_PEERS;
-        previousSelection = currentSelection + 1;  // Make sure new menu is displayed
-        selectionMade = false;
-      }
-      if (selectionMade && currentSelection == RESCAN_SEL) {
-        currentState = RESCAN;
-        selectionMade = false;
-      }
-      if (selectionMade && currentSelection == BROADCAST_SEL) {
-        isBroadcasting = true;
-        currentState = SELECT_EFFECT;
+      if (selectionMade) {
+
+        if (LIST_PEERS_SEL == currentSelection) {
+          currentState = LIST_PEERS;
+          isBroadcasting = false;
+        } else if (RESCAN_SEL == currentSelection) {
+          currentState = RESCAN;
+        } else if (BROADCAST_SEL == currentSelection) {
+          currentState = SELECT_EFFECT;
+          isBroadcasting = true;
+        }
         currentSelection = 0;
         previousSelection = currentSelection + 1;  // Make sure new menu is displayed
-        selectionMade = false;
-      } else {
         selectionMade = false;
       }
 
       break;
 
     case (LIST_PEERS):
-
-      isBroadcasting = false;
-
-      //State info
-      sprintf(buffer, "List Peers Menu -> State: %d, Sel: %d, PreSel: %d", currentState, currentSelection, previousSelection);
-      Serial.println(buffer);
 
       // Limit Selection
       if (currentSelection >= RXCnt + BACK_BUTTON_SPACER) {
@@ -443,26 +430,22 @@ void loop() {
       }
 
       // Handle selection
-      if (selectionMade && currentSelection == RXCnt /*Back Button Pressed*/) {
-        currentState = MAIN_MENU;
+      if (selectionMade) {
+        if (RXCnt == currentSelection /*Back Button Pressed*/) {
+          currentState = MAIN_MENU;
+        } else if (selectionMade) { /* Specific peer selected*/
+          currentState = SELECT_EFFECT;
+          RX_selected = currentSelection;
+          //newRXSelected = true;  // Make sure select effect knows a new RX has been selected
+        }
+        currentSelection = 0;
         previousSelection = currentSelection + 1;  // Make sure new menu is displayed
-        selectionMade = false;
-      } else if (selectionMade) { /* Specific peer selected*/
-        currentState = SELECT_EFFECT;
-
-        previousSelection = currentSelection + 1;  // Make sure new menu is displayed
-        selectionMade = false;
-        newRXSelected = true;  // Make sure select effect knows a new RX has been selected
-      } else {
         selectionMade = false;
       }
 
       break;
 
     case (RESCAN):
-      //State info
-      sprintf(buffer, "Select Effect Menu -> State: %d, Sel: %d, PreSel: %d", currentState, currentSelection, previousSelection);
-      Serial.println(buffer);
 
       Serial.println("Rescanning!!!");
 
@@ -482,15 +465,13 @@ void loop() {
 
     case (SELECT_EFFECT):
 
-      //State info
-      sprintf(buffer, "Select Effect Menu -> State: %d, Sel: %d, PreSel: %d", currentState, currentSelection, previousSelection);
-      Serial.println(buffer);
 
-      if (newRXSelected) {
-        RX_selected = currentSelection;  // This will be the rx we apply the effects to
-        currentSelection = 0;            // Aligns cursor with first menu option in select effect
-        newRXSelected = false;
-      }
+
+      // if (newRXSelected) {
+      //   RX_selected = currentSelection;  // This will be the rx we apply the effects to
+      //   currentSelection = 0;            // Aligns cursor with first menu option in select effect
+      //   newRXSelected = false;
+      // }
 
       // Limit Selection
       if (currentSelection >= SELECT_EFFECT_LENGTH) {
