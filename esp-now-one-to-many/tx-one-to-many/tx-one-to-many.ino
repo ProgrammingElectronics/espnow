@@ -329,6 +329,16 @@ void displayPeers() {
   u8g2.sendBuffer();  // transfer internal memory to the display
 }
 
+void rescan() {
+  u8g2.clearBuffer();
+  u8g2.drawButtonUTF8(1, 10, U8G2_BTN_INV, 0, 2, 2, "Scanning...");
+  u8g2.sendBuffer();
+
+  ScanForReceivers();
+  manageReceiver();
+}
+
+
 void IRAM_ATTR incrementButton() {
   incr_button_time = millis();
   if (incr_button_time - last_incr_button_time > DEBOUNCE) {
@@ -378,9 +388,8 @@ void setup() {
 
 void loop() {
   static char buffer[50];
-  static byte previousSelection = 1;
   static byte currentState = MAIN_MENU;
-  static bool newRXSelected = false;
+  static byte previousSelection = currentSelection + 1;
   static byte RX_selected = 0;
   static bool isBroadcasting = false;
 
@@ -404,12 +413,15 @@ void loop() {
         if (LIST_PEERS_SEL == currentSelection) {
           currentState = LIST_PEERS;
           isBroadcasting = false;
+
         } else if (RESCAN_SEL == currentSelection) {
           currentState = RESCAN;
+
         } else if (BROADCAST_SEL == currentSelection) {
           currentState = SELECT_EFFECT;
           isBroadcasting = true;
         }
+
         currentSelection = 0;
         previousSelection = currentSelection + 1;  // Make sure new menu is displayed
         selectionMade = false;
@@ -431,13 +443,15 @@ void loop() {
 
       // Handle selection
       if (selectionMade) {
+
         if (RXCnt == currentSelection /*Back Button Pressed*/) {
           currentState = MAIN_MENU;
+
         } else if (selectionMade) { /* Specific peer selected*/
           currentState = SELECT_EFFECT;
           RX_selected = currentSelection;
-          //newRXSelected = true;  // Make sure select effect knows a new RX has been selected
         }
+
         currentSelection = 0;
         previousSelection = currentSelection + 1;  // Make sure new menu is displayed
         selectionMade = false;
@@ -447,16 +461,11 @@ void loop() {
 
     case (RESCAN):
 
-      Serial.println("Rescanning!!!");
+      rescan();
 
-      u8g2.clearBuffer();
-      u8g2.drawButtonUTF8(1, 10, U8G2_BTN_INV, 0, 2, 2, "Scanning...");
-      u8g2.sendBuffer();
-
-      ScanForReceivers();
-      manageReceiver();
-
+      //Handle Selection
       currentState = MAIN_MENU;
+
       currentSelection = 0;
       previousSelection = currentSelection + 1;  // Make sure new menu is displayed
       selectionMade = false;
@@ -464,14 +473,6 @@ void loop() {
       break;
 
     case (SELECT_EFFECT):
-
-
-
-      // if (newRXSelected) {
-      //   RX_selected = currentSelection;  // This will be the rx we apply the effects to
-      //   currentSelection = 0;            // Aligns cursor with first menu option in select effect
-      //   newRXSelected = false;
-      // }
 
       // Limit Selection
       if (currentSelection >= SELECT_EFFECT_LENGTH) {
@@ -484,37 +485,35 @@ void loop() {
       }
 
       // Handle selection
-      if (selectionMade && currentSelection == SELECT_EFFECT_LENGTH - 1 /*Back Button Pressed*/) {
-        currentState = isBroadcasting ? MAIN_MENU : LIST_PEERS;
-        currentSelection = 0;  // Start at first menu item
-        selectionMade = false;
-      } else if (selectionMade && currentSelection == CHANGE_COLOR_SEL) {
-        currentState = CHANGE_COLOR;
-        previousSelection = currentSelection + 1;  // Make sure new menu is displayed
-        selectionMade = false;
-      } else if (selectionMade && currentSelection == CYLON_SEL) {
-        data_out.effect = CYLON;
-        sendData(RX_selected, isBroadcasting ? BROADCASTING : ONE_TO_ONE);
-        selectionMade = false;
-      } else if (selectionMade && currentSelection == PACIFICA_SEL) {
-        data_out.effect = PACIFICA;
-        sendData(RX_selected, isBroadcasting ? BROADCASTING : ONE_TO_ONE);
-        selectionMade = false;
-      } else if (selectionMade && currentSelection == RANDOM_REDS_SEL) {
-        data_out.effect = RANDOM_REDS;
-        sendData(RX_selected, isBroadcasting ? BROADCASTING : ONE_TO_ONE);
-        selectionMade = false;
-      } else {
+      if (selectionMade) {
+
+        if ((SELECT_EFFECT_LENGTH - 1) == currentSelection /*Back Button Pressed*/) {
+          currentState = isBroadcasting ? MAIN_MENU : LIST_PEERS;
+          currentSelection = 0;  // Start at first menu item
+
+        } else if (CHANGE_COLOR_SEL == currentSelection) {
+          currentState = CHANGE_COLOR;
+          previousSelection = currentSelection + 1;  // Make sure new menu is displayed
+
+        } else if (CYLON_SEL == currentSelection) {
+          data_out.effect = CYLON;
+          sendData(RX_selected, isBroadcasting ? BROADCASTING : ONE_TO_ONE);
+
+        } else if (PACIFICA_SEL == currentSelection) {
+          data_out.effect = PACIFICA;
+          sendData(RX_selected, isBroadcasting ? BROADCASTING : ONE_TO_ONE);
+
+        } else if (RANDOM_REDS_SEL == currentSelection) {
+          data_out.effect = RANDOM_REDS;
+          sendData(RX_selected, isBroadcasting ? BROADCASTING : ONE_TO_ONE);
+        }
+
         selectionMade = false;
       }
 
       break;
 
     case (CHANGE_COLOR):
-
-      // State info
-      // sprintf(buffer, "CHANGE_COLOR Menu -> State: %d, Sel: %d, PreSel: %d", currentState, currentSelection, previousSelection);
-      // Serial.println(buffer);
 
       // Limit Selection
       if (currentSelection >= COLOR_OPTIONS_LENGTH) {
