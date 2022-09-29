@@ -1,0 +1,5 @@
+{
+    "board": "esp32:esp32:feathers2",
+    "port": "/dev/tty.usbmodem1434101",
+    "sketch": "esp-now-one-to-many/tx-one-to-many/tx-one-to-many.ino"
+}
