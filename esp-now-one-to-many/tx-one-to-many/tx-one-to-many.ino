@@ -338,6 +338,13 @@ void rescan() {
   manageReceiver();
 }
 
+void limitSelection(uint8_t max_selection) {
+  
+  if (currentSelection >= max_selection) {
+    currentSelection = 0;
+  }
+
+}
 
 void IRAM_ATTR incrementButton() {
   incr_button_time = millis();
@@ -396,10 +403,13 @@ void loop() {
   switch (currentState) {
     case (MAIN_MENU):
 
+      limitSelection(MAIN_MENU_LENGTH);
+      Serial.print("currentSelection = ");
+      Serial.println(currentSelection);
       // Limit Selection
-      if (currentSelection >= MAIN_MENU_LENGTH) {
-        currentSelection = 0;
-      }
+      // if (currentSelection >= MAIN_MENU_LENGTH) {
+      //   currentSelection = 0;
+      // }
 
       // Display Menu
       if (previousSelection != currentSelection) {
