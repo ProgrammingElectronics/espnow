@@ -339,11 +339,10 @@ void rescan() {
 }
 
 void limitSelection(uint8_t max_selection) {
-  
+
   if (currentSelection >= max_selection) {
     currentSelection = 0;
   }
-
 }
 
 void IRAM_ATTR incrementButton() {
@@ -404,12 +403,6 @@ void loop() {
     case (MAIN_MENU):
 
       limitSelection(MAIN_MENU_LENGTH);
-      Serial.print("currentSelection = ");
-      Serial.println(currentSelection);
-      // Limit Selection
-      // if (currentSelection >= MAIN_MENU_LENGTH) {
-      //   currentSelection = 0;
-      // }
 
       // Display Menu
       if (previousSelection != currentSelection) {
@@ -442,9 +435,7 @@ void loop() {
     case (LIST_PEERS):
 
       // Limit Selection
-      if (currentSelection >= RXCnt + BACK_BUTTON_SPACER) {
-        currentSelection = 0;
-      }
+      limitSelection(RXCnt + BACK_BUTTON_SPACER);
 
       if (previousSelection != currentSelection) {
         displayPeers();
@@ -485,9 +476,7 @@ void loop() {
     case (SELECT_EFFECT):
 
       // Limit Selection
-      if (currentSelection >= SELECT_EFFECT_LENGTH) {
-        currentSelection = 0;
-      }
+      limitSelection(SELECT_EFFECT_LENGTH);
 
       if (previousSelection != currentSelection) {
         displayMenu(SEL_EFFECT_OPTIONS, SELECT_EFFECT_LENGTH);
@@ -526,9 +515,7 @@ void loop() {
     case (CHANGE_COLOR):
 
       // Limit Selection
-      if (currentSelection >= COLOR_OPTIONS_LENGTH) {
-        currentSelection = 0;
-      }
+      limitSelection(COLOR_OPTIONS_LENGTH);
 
       // Display menu and send color data
       if (previousSelection != currentSelection) {
