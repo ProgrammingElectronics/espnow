@@ -329,6 +329,22 @@ void displayPeers() {
   u8g2.sendBuffer();  // transfer internal memory to the display
 }
 
+void rescan() {
+  u8g2.clearBuffer();
+  u8g2.drawButtonUTF8(1, 10, U8G2_BTN_INV, 0, 2, 2, "Scanning...");
+  u8g2.sendBuffer();
+
+  ScanForReceivers();
+  manageReceiver();
+}
+
+void limitSelection(uint8_t max_selection) {
+
+  if (currentSelection >= max_selection) {
+    currentSelection = 0;
+  }
+}
+
 void IRAM_ATTR incrementButton() {
   incr_button_time = millis();
   if (incr_button_time - last_incr_button_time > DEBOUNCE) {
@@ -378,23 +394,15 @@ void setup() {
 
 void loop() {
   static char buffer[50];
-  static byte previousSelection = 1;
   static byte currentState = MAIN_MENU;
-  static bool newRXSelected = false;
+  static byte previousSelection = currentSelection + 1;
   static byte RX_selected = 0;
   static bool isBroadcasting = false;
 
   switch (currentState) {
     case (MAIN_MENU):
 
-      // State info
-      sprintf(buffer, "Main Menu -> State: %d, Sel: %d, PreSel: %d", currentState, currentSelection, previousSelection);
-      Serial.println(buffer);
-
-      // Limit Selection
-      if (currentSelection >= MAIN_MENU_LENGTH) {
-        currentSelection = 0;
-      }
+      limitSelection(MAIN_MENU_LENGTH);
 
       // Display Menu
       if (previousSelection != currentSelection) {
@@ -403,22 +411,22 @@ void loop() {
       }
 
       // Handle selections
-      if (selectionMade && currentSelection == LIST_PEERS_SEL) {
-        currentState = LIST_PEERS;
-        previousSelection = currentSelection + 1;  // Make sure new menu is displayed
-        selectionMade = false;
-      }
-      if (selectionMade && currentSelection == RESCAN_SEL) {
-        currentState = RESCAN;
-        selectionMade = false;
-      }
-      if (selectionMade && currentSelection == BROADCAST_SEL) {
-        isBroadcasting = true;
-        currentState = SELECT_EFFECT;
+      if (selectionMade) {
+
+        if (LIST_PEERS_SEL == currentSelection) {
+          currentState = LIST_PEERS;
+          isBroadcasting = false;
+
+        } else if (RESCAN_SEL == currentSelection) {
+          currentState = RESCAN;
+
+        } else if (BROADCAST_SEL == currentSelection) {
+          currentState = SELECT_EFFECT;
+          isBroadcasting = true;
+        }
+
         currentSelection = 0;
         previousSelection = currentSelection + 1;  // Make sure new menu is displayed
-        selectionMade = false;
-      } else {
         selectionMade = false;
       }
 
@@ -426,16 +434,8 @@ void loop() {
 
     case (LIST_PEERS):
 
-      isBroadcasting = false;
-
-      //State info
-      sprintf(buffer, "List Peers Menu -> State: %d, Sel: %d, PreSel: %d", currentState, currentSelection, previousSelection);
-      Serial.println(buffer);
-
       // Limit Selection
-      if (currentSelection >= RXCnt + BACK_BUTTON_SPACER) {
-        currentSelection = 0;
-      }
+      limitSelection(RXCnt + BACK_BUTTON_SPACER);
 
       if (previousSelection != currentSelection) {
         displayPeers();
@@ -443,37 +443,30 @@ void loop() {
       }
 
       // Handle selection
-      if (selectionMade && currentSelection == RXCnt /*Back Button Pressed*/) {
-        currentState = MAIN_MENU;
-        previousSelection = currentSelection + 1;  // Make sure new menu is displayed
-        selectionMade = false;
-      } else if (selectionMade) { /* Specific peer selected*/
-        currentState = SELECT_EFFECT;
+      if (selectionMade) {
 
+        if (RXCnt == currentSelection /*Back Button Pressed*/) {
+          currentState = MAIN_MENU;
+
+        } else if (selectionMade) { /* Specific peer selected*/
+          currentState = SELECT_EFFECT;
+          RX_selected = currentSelection;
+        }
+
+        currentSelection = 0;
         previousSelection = currentSelection + 1;  // Make sure new menu is displayed
-        selectionMade = false;
-        newRXSelected = true;  // Make sure select effect knows a new RX has been selected
-      } else {
         selectionMade = false;
       }
 
       break;
 
     case (RESCAN):
-      //State info
-      sprintf(buffer, "Select Effect Menu -> State: %d, Sel: %d, PreSel: %d", currentState, currentSelection, previousSelection);
-      Serial.println(buffer);
 
-      Serial.println("Rescanning!!!");
+      rescan();
 
-      u8g2.clearBuffer();
-      u8g2.drawButtonUTF8(1, 10, U8G2_BTN_INV, 0, 2, 2, "Scanning...");
-      u8g2.sendBuffer();
-
-      ScanForReceivers();
-      manageReceiver();
-
+      //Handle Selection
       currentState = MAIN_MENU;
+
       currentSelection = 0;
       previousSelection = currentSelection + 1;  // Make sure new menu is displayed
       selectionMade = false;
@@ -482,20 +475,8 @@ void loop() {
 
     case (SELECT_EFFECT):
 
-      //State info
-      sprintf(buffer, "Select Effect Menu -> State: %d, Sel: %d, PreSel: %d", currentState, currentSelection, previousSelection);
-      Serial.println(buffer);
-
-      if (newRXSelected) {
-        RX_selected = currentSelection;  // This will be the rx we apply the effects to
-        currentSelection = 0;            // Aligns cursor with first menu option in select effect
-        newRXSelected = false;
-      }
-
       // Limit Selection
-      if (currentSelection >= SELECT_EFFECT_LENGTH) {
-        currentSelection = 0;
-      }
+      limitSelection(SELECT_EFFECT_LENGTH);
 
       if (previousSelection != currentSelection) {
         displayMenu(SEL_EFFECT_OPTIONS, SELECT_EFFECT_LENGTH);
@@ -503,27 +484,29 @@ void loop() {
       }
 
       // Handle selection
-      if (selectionMade && currentSelection == SELECT_EFFECT_LENGTH - 1 /*Back Button Pressed*/) {
-        currentState = isBroadcasting ? MAIN_MENU : LIST_PEERS;
-        currentSelection = 0;  // Start at first menu item
-        selectionMade = false;
-      } else if (selectionMade && currentSelection == CHANGE_COLOR_SEL) {
-        currentState = CHANGE_COLOR;
-        previousSelection = currentSelection + 1;  // Make sure new menu is displayed
-        selectionMade = false;
-      } else if (selectionMade && currentSelection == CYLON_SEL) {
-        data_out.effect = CYLON;
-        sendData(RX_selected, isBroadcasting ? BROADCASTING : ONE_TO_ONE);
-        selectionMade = false;
-      } else if (selectionMade && currentSelection == PACIFICA_SEL) {
-        data_out.effect = PACIFICA;
-        sendData(RX_selected, isBroadcasting ? BROADCASTING : ONE_TO_ONE);
-        selectionMade = false;
-      } else if (selectionMade && currentSelection == RANDOM_REDS_SEL) {
-        data_out.effect = RANDOM_REDS;
-        sendData(RX_selected, isBroadcasting ? BROADCASTING : ONE_TO_ONE);
-        selectionMade = false;
-      } else {
+      if (selectionMade) {
+
+        if ((SELECT_EFFECT_LENGTH - 1) == currentSelection /*Back Button Pressed*/) {
+          currentState = isBroadcasting ? MAIN_MENU : LIST_PEERS;
+          currentSelection = 0;  // Start at first menu item
+
+        } else if (CHANGE_COLOR_SEL == currentSelection) {
+          currentState = CHANGE_COLOR;
+          previousSelection = currentSelection + 1;  // Make sure new menu is displayed
+
+        } else if (CYLON_SEL == currentSelection) {
+          data_out.effect = CYLON;
+          sendData(RX_selected, isBroadcasting ? BROADCASTING : ONE_TO_ONE);
+
+        } else if (PACIFICA_SEL == currentSelection) {
+          data_out.effect = PACIFICA;
+          sendData(RX_selected, isBroadcasting ? BROADCASTING : ONE_TO_ONE);
+
+        } else if (RANDOM_REDS_SEL == currentSelection) {
+          data_out.effect = RANDOM_REDS;
+          sendData(RX_selected, isBroadcasting ? BROADCASTING : ONE_TO_ONE);
+        }
+
         selectionMade = false;
       }
 
@@ -531,24 +514,13 @@ void loop() {
 
     case (CHANGE_COLOR):
 
-      // State info
-      // sprintf(buffer, "CHANGE_COLOR Menu -> State: %d, Sel: %d, PreSel: %d", currentState, currentSelection, previousSelection);
-      // Serial.println(buffer);
-
       // Limit Selection
-      if (currentSelection >= COLOR_OPTIONS_LENGTH) {
-        currentSelection = 0;
-      }
+      limitSelection(COLOR_OPTIONS_LENGTH);
 
-      // Display Color
+      // Display menu and send color data
       if (previousSelection != currentSelection) {
-        Serial.print("Color sent to: ");
-        Serial.print(RX_selected);
 
-        int spacing = LINE_SPACING + u8g2.getAscent() + abs(u8g2.getDescent());
-        u8g2.clearBuffer();  // clear the internal memory
-        u8g2.drawButtonUTF8(10, spacing, U8G2_BTN_INV, 0, 2, 2, COLOR_OPTIONS[currentSelection]);
-        u8g2.sendBuffer();  // transfer internal memory to the display
+        displayMenu(COLOR_OPTIONS, COLOR_OPTIONS_LENGTH);
         previousSelection = currentSelection;
 
         data_out.effect = SOLID_COLOR;
@@ -563,7 +535,6 @@ void loop() {
         previousSelection = currentSelection + 1;  // Make sure new menu is displayed
         selectionMade = false;
       }
-
 
       break;
   }
