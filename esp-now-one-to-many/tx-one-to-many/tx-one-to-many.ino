@@ -24,7 +24,13 @@
 #define NUMRECEIVERS 20
 
 esp_now_peer_info_t receivers[NUMRECEIVERS] = {};
-char peerSSIDs[20][50];  // Store the SSID of each connected network
+
+/***************************** PLACE OF ISSUE ***********************************************************/
+// Store the SSID of each connected network
+char peerSSIDs[20][32];        // This Works with displayPeers()
+const char *peerPressure[20];  // I can't get this to work with displayMenu()
+/***************************** PLACE OF ISSUE ***********************************************************/
+
 int RXCnt = 0;
 
 #define CHANNEL 1
@@ -85,6 +91,7 @@ neopixel_data data_out;
 // Track user button presses
 volatile byte currentSelection = 0;
 volatile bool selectionMade = false;
+
 
 // variables to keep track of the timing of recent interrupts
 volatile unsigned long incr_button_time = 0;
@@ -165,7 +172,18 @@ void ScanForReceivers() {
         receivers[RXCnt].channel = CHANNEL;  // pick a channel
         receivers[RXCnt].encrypt = 0;        // no encryption
 
-        SSID.toCharArray(peerSSIDs[RXCnt], SSID.length());
+        /***************************** PLACE OF ISSUE ***********************************************************/
+        SSID.toCharArray(peerSSIDs[RXCnt], SSID.length()); // This copies the appropriate chars strings into peerSSID[][] and work with displayPeers()
+
+        char tempBuf[32];
+        SSID.toCharArray(tempBuf, SSID.length());
+        peerPressure[RXCnt] = tempBuf;
+        /***************************** PLACE OF ISSUE ***********************************************************/
+
+        Serial.print("tempBuffer-> ");
+        Serial.println(tempBuf);
+        Serial.print("peerPressure -> ");
+        Serial.println(peerPressure[RXCnt]);
 
         RXCnt++;
       }
@@ -384,6 +402,15 @@ void setup() {
   ScanForReceivers();
   manageReceiver();
 
+  Serial.print("peerPressure[0] -> ");
+  Serial.println(peerPressure[0]);
+  Serial.print("peerPressure[1] -> ");
+  Serial.println(peerPressure[1]);
+  Serial.print("peerPressure[2] -> ");
+  Serial.println(peerPressure[2]);
+  Serial.print("peerPressure[3] -> ");
+  Serial.println(peerPressure[3]);
+
   Serial.print("RXs scanned, found: ");
   Serial.print(RXCnt);
 
@@ -439,6 +466,7 @@ void loop() {
 
       if (previousSelection != currentSelection) {
         displayPeers();
+        //displayMenu(peerPressure, RXCnt);
         previousSelection = currentSelection;
       }
 
