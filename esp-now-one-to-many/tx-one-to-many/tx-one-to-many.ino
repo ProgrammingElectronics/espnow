@@ -465,8 +465,8 @@ void loop() {
       limitSelection(RXCnt + BACK_BUTTON_SPACER);
 
       if (previousSelection != currentSelection) {
-        displayPeers();
-        //displayMenu(peerPressure, RXCnt);
+        //displayPeers();
+        displayMenu(peerPressure, RXCnt);
         previousSelection = currentSelection;
       }
 
