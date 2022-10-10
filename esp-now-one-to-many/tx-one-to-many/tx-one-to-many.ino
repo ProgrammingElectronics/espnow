@@ -25,13 +25,9 @@
 
 esp_now_peer_info_t receivers[NUMRECEIVERS] = {};
 
-/***************************** PLACE OF ISSUE ***********************************************************/
 // Store the SSID of each connected network
-char peerSSIDs[20][32];        // This Works with displayPeers()
-const char *peerPressure[20];  // I can't get this to work with displayMenu()
-/***************************** PLACE OF ISSUE ***********************************************************/
-
-int RXCnt = 0;
+char peerSSIDs[20][32];  // This Works with displayPeers()
+byte RXCnt = 0;
 
 #define CHANNEL 1
 #define PRINTSCANRESULTS 1
@@ -109,9 +105,7 @@ void InitESPNow() {
     Serial.println("ESPNow Init Success");
   } else {
     Serial.println("ESPNow Init Failed");
-    // Retry InitESPNow, add a counte and then restart?
-    // InitESPNow();
-    // or Simply Restart
+    // Retry InitESPNow
     ESP.restart();
   }
 }
@@ -148,6 +142,8 @@ void ScanForReceivers() {
         Serial.println("");
       }
       delay(10);
+
+      //TODO -> Limit RX count to 20 per ESPnow specs
       // Check if the current device starts with `RX`
       if (SSID.indexOf("RX") == 0) {
         // SSID of interest
@@ -172,18 +168,7 @@ void ScanForReceivers() {
         receivers[RXCnt].channel = CHANNEL;  // pick a channel
         receivers[RXCnt].encrypt = 0;        // no encryption
 
-        /***************************** PLACE OF ISSUE ***********************************************************/
-        SSID.toCharArray(peerSSIDs[RXCnt], SSID.length()); // This copies the appropriate chars strings into peerSSID[][] and work with displayPeers()
-
-        char tempBuf[32];
-        SSID.toCharArray(tempBuf, SSID.length());
-        peerPressure[RXCnt] = tempBuf;
-        /***************************** PLACE OF ISSUE ***********************************************************/
-
-        Serial.print("tempBuffer-> ");
-        Serial.println(tempBuf);
-        Serial.print("peerPressure -> ");
-        Serial.println(peerPressure[RXCnt]);
+        SSID.toCharArray(peerSSIDs[RXCnt], SSID.length());  // This copies the appropriate chars strings into peerSSID[][] and work with displayPeers()
 
         RXCnt++;
       }
@@ -327,26 +312,6 @@ void displayMenu(const char *menuArray[], byte len) {
   u8g2.sendBuffer();  // transfer internal memory to the display
 }
 
-void displayPeers() {
-  u8g2.clearBuffer();
-  int spacing = LINE_SPACING + u8g2.getAscent() + abs(u8g2.getDescent());
-
-  // Only show 3 items at once
-  int start = currentSelection / NUM_PEERS_TO_DISPLAY * NUM_PEERS_TO_DISPLAY;
-  int end = start + NUM_PEERS_TO_DISPLAY > RXCnt + BACK_BUTTON_SPACER ? RXCnt + BACK_BUTTON_SPACER : start + NUM_PEERS_TO_DISPLAY;
-
-  for (int i = start; i < end; i++) {
-    if (i == RXCnt) {
-      u8g2.drawButtonUTF8(1, spacing, currentSelection == i ? U8G2_BTN_INV : U8G2_BTN_BW0, 0, 2, 2, "Back");
-    } else {
-      u8g2.drawButtonUTF8(1, spacing, currentSelection == i ? U8G2_BTN_INV : U8G2_BTN_BW0, 0, 2, 2, peerSSIDs[i]);
-    }
-    spacing += LINE_SPACING + u8g2.getAscent() + abs(u8g2.getDescent());
-  }
-
-  u8g2.sendBuffer();  // transfer internal memory to the display
-}
-
 void rescan() {
   u8g2.clearBuffer();
   u8g2.drawButtonUTF8(1, 10, U8G2_BTN_INV, 0, 2, 2, "Scanning...");
@@ -402,15 +367,6 @@ void setup() {
   ScanForReceivers();
   manageReceiver();
 
-  Serial.print("peerPressure[0] -> ");
-  Serial.println(peerPressure[0]);
-  Serial.print("peerPressure[1] -> ");
-  Serial.println(peerPressure[1]);
-  Serial.print("peerPressure[2] -> ");
-  Serial.println(peerPressure[2]);
-  Serial.print("peerPressure[3] -> ");
-  Serial.println(peerPressure[3]);
-
   Serial.print("RXs scanned, found: ");
   Serial.print(RXCnt);
 
@@ -465,8 +421,19 @@ void loop() {
       limitSelection(RXCnt + BACK_BUTTON_SPACER);
 
       if (previousSelection != currentSelection) {
+
+        //Build array of char pointers to RX SSIDs for menu and add back button
+        const char *SSID_Menu[RXCnt + BACK_BUTTON_SPACER];
+        for (int i = 0; i < RXCnt + BACK_BUTTON_SPACER; i++) {
+          if (i == RXCnt) {
+            SSID_Menu[i] = "Back";
+          } else {
+            SSID_Menu[i] = peerSSIDs[i];
+          }
+        }
+
         //displayPeers();
-        displayMenu(peerPressure, RXCnt);
+        displayMenu(SSID_Menu, RXCnt + BACK_BUTTON_SPACER);
         previousSelection = currentSelection;
       }
 
