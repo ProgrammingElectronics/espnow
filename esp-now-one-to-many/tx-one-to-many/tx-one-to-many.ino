@@ -24,8 +24,10 @@
 #define NUMRECEIVERS 20
 
 esp_now_peer_info_t receivers[NUMRECEIVERS] = {};
-char peerSSIDs[20][50];  // Store the SSID of each connected network
-int RXCnt = 0;
+
+// Store the SSID of each connected network
+char peerSSIDs[20][32];  // This Works with displayPeers()
+byte RXCnt = 0;
 
 #define CHANNEL 1
 #define PRINTSCANRESULTS 1
@@ -86,6 +88,7 @@ neopixel_data data_out;
 volatile byte currentSelection = 0;
 volatile bool selectionMade = false;
 
+
 // variables to keep track of the timing of recent interrupts
 volatile unsigned long incr_button_time = 0;
 volatile unsigned long sel_button_time = 0;
@@ -102,9 +105,7 @@ void InitESPNow() {
     Serial.println("ESPNow Init Success");
   } else {
     Serial.println("ESPNow Init Failed");
-    // Retry InitESPNow, add a counte and then restart?
-    // InitESPNow();
-    // or Simply Restart
+    // Retry InitESPNow
     ESP.restart();
   }
 }
@@ -141,6 +142,8 @@ void ScanForReceivers() {
         Serial.println("");
       }
       delay(10);
+
+      //TODO -> Limit RX count to 20 per ESPnow specs
       // Check if the current device starts with `RX`
       if (SSID.indexOf("RX") == 0) {
         // SSID of interest
@@ -165,7 +168,7 @@ void ScanForReceivers() {
         receivers[RXCnt].channel = CHANNEL;  // pick a channel
         receivers[RXCnt].encrypt = 0;        // no encryption
 
-        SSID.toCharArray(peerSSIDs[RXCnt], SSID.length());
+        SSID.toCharArray(peerSSIDs[RXCnt], SSID.length());  // This copies the appropriate chars strings into peerSSID[][] and work with displayPeers()
 
         RXCnt++;
       }
@@ -309,26 +312,6 @@ void displayMenu(const char *menuArray[], byte len) {
   u8g2.sendBuffer();  // transfer internal memory to the display
 }
 
-void displayPeers() {
-  u8g2.clearBuffer();
-  int spacing = LINE_SPACING + u8g2.getAscent() + abs(u8g2.getDescent());
-
-  // Only show 3 items at once
-  int start = currentSelection / NUM_PEERS_TO_DISPLAY * NUM_PEERS_TO_DISPLAY;
-  int end = start + NUM_PEERS_TO_DISPLAY > RXCnt + BACK_BUTTON_SPACER ? RXCnt + BACK_BUTTON_SPACER : start + NUM_PEERS_TO_DISPLAY;
-
-  for (int i = start; i < end; i++) {
-    if (i == RXCnt) {
-      u8g2.drawButtonUTF8(1, spacing, currentSelection == i ? U8G2_BTN_INV : U8G2_BTN_BW0, 0, 2, 2, "Back");
-    } else {
-      u8g2.drawButtonUTF8(1, spacing, currentSelection == i ? U8G2_BTN_INV : U8G2_BTN_BW0, 0, 2, 2, peerSSIDs[i]);
-    }
-    spacing += LINE_SPACING + u8g2.getAscent() + abs(u8g2.getDescent());
-  }
-
-  u8g2.sendBuffer();  // transfer internal memory to the display
-}
-
 void rescan() {
   u8g2.clearBuffer();
   u8g2.drawButtonUTF8(1, 10, U8G2_BTN_INV, 0, 2, 2, "Scanning...");
@@ -438,7 +421,19 @@ void loop() {
       limitSelection(RXCnt + BACK_BUTTON_SPACER);
 
       if (previousSelection != currentSelection) {
-        displayPeers();
+
+        //Build array of char pointers to RX SSIDs for menu and add back button
+        const char *SSID_Menu[RXCnt + BACK_BUTTON_SPACER];
+        for (int i = 0; i < RXCnt + BACK_BUTTON_SPACER; i++) {
+          if (i == RXCnt) {
+            SSID_Menu[i] = "Back";
+          } else {
+            SSID_Menu[i] = peerSSIDs[i];
+          }
+        }
+
+        //displayPeers();
+        displayMenu(SSID_Menu, RXCnt + BACK_BUTTON_SPACER);
         previousSelection = currentSelection;
       }
 
