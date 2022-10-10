@@ -101,8 +101,10 @@ U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* clock=*/SCL, /* data=*/SDA,
 // Init ESP Now with fallback
 void InitESPNow() {
   WiFi.disconnect();
+  
   if (esp_now_init() == ESP_OK) {
     Serial.println("ESPNow Init Success");
+  
   } else {
     Serial.println("ESPNow Init Failed");
     // Retry InitESPNow
@@ -117,12 +119,15 @@ void ScanForReceivers() {
   memset(receivers, 0, sizeof(receivers));
   RXCnt = 0;
   Serial.println("");
+  
   if (scanResults == 0) {
     Serial.println("No WiFi devices in AP Mode found");
+  
   } else {
     Serial.print("Found ");
     Serial.print(scanResults);
     Serial.println(" devices ");
+    
     for (int i = 0; i < scanResults; ++i) {
       // Print SSID and RSSI for each device found
       String SSID = WiFi.SSID(i);
@@ -178,6 +183,7 @@ void ScanForReceivers() {
   if (RXCnt > 0) {
     Serial.print(RXCnt);
     Serial.println(" Receivers(s) found, processing..");
+  
   } else {
     Serial.println("No Receiver Found, trying again.");
   }
@@ -189,37 +195,51 @@ void ScanForReceivers() {
 // Check if the receiver is already paired with the transmitter.
 // If not, pair the receiver with transmitter
 void manageReceiver() {
+  
   if (RXCnt > 0) {
+    
     for (int i = 0; i < RXCnt; i++) {
       Serial.print("Processing: ");
+      
       for (int ii = 0; ii < 6; ++ii) {
         Serial.print((uint8_t)receivers[i].peer_addr[ii], HEX);
+        
         if (ii != 5)
           Serial.print(":");
       }
+      
       Serial.print(" Status: ");
       // check if the peer exists
       bool exists = esp_now_is_peer_exist(receivers[i].peer_addr);
+      
       if (exists) {
         // Receiver already paired.
         Serial.println("Already Paired");
+      
       } else {
         // Receiver not paired, attempt pair
         esp_err_t addStatus = esp_now_add_peer(&receivers[i]);
+        
         if (addStatus == ESP_OK) {
           // Pair success
           Serial.println("Pair success");
+        
         } else if (addStatus == ESP_ERR_ESPNOW_NOT_INIT) {
           // How did we get so far!!
           Serial.println("ESPNOW Not Init");
+        
         } else if (addStatus == ESP_ERR_ESPNOW_ARG) {
           Serial.println("Add Peer - Invalid Argument");
+        
         } else if (addStatus == ESP_ERR_ESPNOW_FULL) {
           Serial.println("Peer list full");
+        
         } else if (addStatus == ESP_ERR_ESPNOW_NO_MEM) {
           Serial.println("Out of memory");
+        
         } else if (addStatus == ESP_ERR_ESPNOW_EXIST) {
           Serial.println("Peer Exists");
+        
         } else {
           Serial.println("Not sure what happened");
         }
@@ -237,17 +257,23 @@ void displayError(esp_err_t result) {
   Serial.print("Send Status: ");
   if (result == ESP_OK) {
     Serial.println("Success");
+  
   } else if (result == ESP_ERR_ESPNOW_NOT_INIT) {
     // How did we get so far!!
     Serial.println("ESPNOW not Init.");
+  
   } else if (result == ESP_ERR_ESPNOW_ARG) {
     Serial.println("Invalid Argument");
+  
   } else if (result == ESP_ERR_ESPNOW_INTERNAL) {
     Serial.println("Internal Error");
+  
   } else if (result == ESP_ERR_ESPNOW_NO_MEM) {
     Serial.println("ESP_ERR_ESPNOW_NO_MEM");
+  
   } else if (result == ESP_ERR_ESPNOW_NOT_FOUND) {
     Serial.println("Peer not found.");
+  
   } else {
     Serial.println("Not sure what happened");
   }
@@ -273,10 +299,12 @@ void sendData(byte RX_sel, byte MODE_sel) {
 
     for (int i = 0; i < RXCnt; i++) {
       const uint8_t *peer_addr = receivers[i].peer_addr;
+      
       if (i == 0) {  // print only for first receiver
         Serial.print("Sending: ");
         Serial.println(data_out.effect);
       }
+
       esp_err_t result = esp_now_send(peer_addr, (uint8_t *)&data_out, sizeof(data_out));
       displayError(result);
       delay(100);
@@ -329,7 +357,9 @@ void limitSelection(uint8_t max_selection) {
 }
 
 void IRAM_ATTR incrementButton() {
+  
   incr_button_time = millis();
+
   if (incr_button_time - last_incr_button_time > DEBOUNCE) {
     currentSelection++;
     Serial.println(currentSelection);
@@ -338,7 +368,9 @@ void IRAM_ATTR incrementButton() {
 }
 
 void IRAM_ATTR selectButton() {
+  
   sel_button_time = millis();
+
   if (sel_button_time - last_sel_button_time > DEBOUNCE) {
     selectionMade = true;
     Serial.println(selectionMade);
@@ -407,10 +439,6 @@ void loop() {
           currentState = SELECT_EFFECT;
           isBroadcasting = true;
         }
-
-        currentSelection = 0;
-        previousSelection = currentSelection + 1;  // Make sure new menu is displayed
-        selectionMade = false;
       }
 
       break;
@@ -425,8 +453,10 @@ void loop() {
         //Build array of char pointers to RX SSIDs for menu and add back button
         const char *SSID_Menu[RXCnt + BACK_BUTTON_SPACER];
         for (int i = 0; i < RXCnt + BACK_BUTTON_SPACER; i++) {
+
           if (i == RXCnt) {
             SSID_Menu[i] = "Back";
+
           } else {
             SSID_Menu[i] = peerSSIDs[i];
           }
@@ -447,10 +477,6 @@ void loop() {
           currentState = SELECT_EFFECT;
           RX_selected = currentSelection;
         }
-
-        currentSelection = 0;
-        previousSelection = currentSelection + 1;  // Make sure new menu is displayed
-        selectionMade = false;
       }
 
       break;
@@ -461,10 +487,6 @@ void loop() {
 
       //Handle Selection
       currentState = MAIN_MENU;
-
-      currentSelection = 0;
-      previousSelection = currentSelection + 1;  // Make sure new menu is displayed
-      selectionMade = false;
 
       break;
 
@@ -524,13 +546,15 @@ void loop() {
       }
 
       // Handle selection
-      if (selectionMade) {
-        currentState = SELECT_EFFECT;
-        currentSelection = 0;                      // Start at first menu item in Peer menu
-        previousSelection = currentSelection + 1;  // Make sure new menu is displayed
-        selectionMade = false;
-      }
+      if (selectionMade) currentState = SELECT_EFFECT;
 
       break;
+  }
+
+  // Reset Seletion
+  if (selectionMade) {
+    currentSelection = 0;                      // Start at first menu item in next menu
+    previousSelection = currentSelection + 1;  // Make sure new menu is displayed
+    selectionMade = false;
   }
 }
