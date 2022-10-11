@@ -263,7 +263,7 @@ void loop() {
   static byte previousHue = data.hue;
 
   //Display Solid Color
-  if (data.effect == SOLID_COLOR && data.hue != previousHue) {
+  if (data.effect == SOLID_COLOR /*&& data.hue != previousHue*/) {
 
     previousHue = data.hue;
 
