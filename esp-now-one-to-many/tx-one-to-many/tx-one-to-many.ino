@@ -44,30 +44,25 @@ const byte LIST_PEERS = 1;
 const byte RESCAN = 2;
 const byte BROADCAST = 3;
 const byte SELECT_EFFECT = 4;
-const byte CHANGE_COLOR = 5;
+const byte SOLID_COLOR = 5;
 
 // Main Menu
 const byte LIST_PEERS_SEL = 0;
 const byte RESCAN_SEL = 1;
 const byte BROADCAST_SEL = 2;
 
-// Select Effect Menu
-const byte CHANGE_COLOR_SEL = 0;
-const byte CYLON_SEL = 1;
-const byte PACIFICA_SEL = 2;
-const byte RANDOM_REDS_SEL = 3;
+//Select Effect Menu Options
+const byte CHANGE_COLOR = 0;
+const byte CYLON = 1;
+const byte PACIFICA = 2;
+const byte RANDOM_REDS = 3;
+const byte TURN_OFF = 4;
 
 // List Peers menu options
 const byte NUM_PEERS_TO_DISPLAY = 3;
 const byte BACK_BUTTON_SPACER = 1;
 const byte NUM_MENU_ITEMS_TO_DISPLAY = 3;
 
-//TODO Merge these and use the SELECT EFFECT CONSTANTS ABOVE
-const byte SOLID_COLOR = 0;
-const byte CYLON = 1;
-const byte PACIFICA = 2;
-const byte RANDOM_REDS = 3;
-const byte TURN_OFF = 4;
 
 // Formatting for display
 const byte LINE_SPACING = 5;  // space between each line
@@ -525,15 +520,15 @@ void loop() {
           currentState = isBroadcasting ? MAIN_MENU : LIST_PEERS;
           currentSelection = 0;  // Start at first menu item
 
-        } else if (CHANGE_COLOR_SEL == currentSelection) {
+        } else if (CHANGE_COLOR == currentSelection) {
           Serial.print("CHANGE_COLOR_SEL | currentSelection -> ");
           Serial.println(currentSelection);
           Serial.println(" ");
 
-          currentState = CHANGE_COLOR;
+          currentState = SOLID_COLOR;
           previousSelection = currentSelection + 1;  // Make sure new menu is displayed
 
-        } else if (CYLON_SEL == currentSelection) {
+        } else if (CYLON == currentSelection) {
           Serial.print("CYLON_SEL | currentSelection -> ");
           Serial.println(currentSelection);
           Serial.println(" ");
@@ -541,7 +536,7 @@ void loop() {
           data_out.effect = CYLON;
           sendData(RX_selected, isBroadcasting ? BROADCASTING : ONE_TO_ONE);
 
-        } else if (PACIFICA_SEL == currentSelection) {
+        } else if (PACIFICA == currentSelection) {
           Serial.print("PACIFICA_SEL | currentSelection -> ");
           Serial.println(currentSelection);
           Serial.println(" ");
@@ -549,7 +544,7 @@ void loop() {
           data_out.effect = PACIFICA;
           sendData(RX_selected, isBroadcasting ? BROADCASTING : ONE_TO_ONE);
 
-        } else if (RANDOM_REDS_SEL == currentSelection) {
+        } else if (RANDOM_REDS == currentSelection) {
           Serial.print("RANDOM_REDS_SEL | currentSelection -> ");
           Serial.println(currentSelection);
           Serial.println(" ");
@@ -562,7 +557,7 @@ void loop() {
           Serial.println(currentSelection);
           Serial.println(" ");
 
-          data_out.effect = SOLID_COLOR;  //Turn Off use the Solid Color
+          data_out.effect = CHANGE_COLOR;  //Turn Off use the Solid Color
 
           data_out.hue = 255;  // This value needs to be different then the previous hue sent to RX, or RX will not adjust
           //Adjust saturation and value to zero if "Turn Off" selected
@@ -576,7 +571,7 @@ void loop() {
 
       break;
 
-    case (CHANGE_COLOR):
+    case (SOLID_COLOR):
 
       // Limit Selection
       limitSelection(COLOR_OPTIONS_LENGTH);
@@ -587,7 +582,7 @@ void loop() {
         displayMenu(COLOR_OPTIONS, COLOR_OPTIONS_LENGTH);
         previousSelection = currentSelection;
 
-        data_out.effect = SOLID_COLOR;
+        data_out.effect = CHANGE_COLOR;
         data_out.hue = COLOR_VALUES[currentSelection];
 
         //Adjust saturation and value to zero if "Turn Off" selected

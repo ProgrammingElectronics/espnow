@@ -24,7 +24,7 @@ const byte CHANNEL = 1;
 // LED Effects
 const int FRAMES_PER_SECOND = 120;
 
-const byte SOLID_COLOR = 0;
+const byte CHANGE_COLOR = 0;
 const byte CYLON = 1;
 const byte PACIFICA = 2;
 const byte RANDOM_REDS = 3;
@@ -41,7 +41,7 @@ CRGB leds[NUM_LEDS];
 
 // Where incoming data is stored
 struct neopixel_data {
-  byte effect = SOLID_COLOR;
+  byte effect = CHANGE_COLOR;
   bool display = true;
   byte hue = 100;
   byte saturation = 255;
@@ -263,7 +263,7 @@ void loop() {
   static byte previousHue = data.hue;
 
   //Display Solid Color
-  if (data.effect == SOLID_COLOR /*&& data.hue != previousHue*/) {
+  if (data.effect == CHANGE_COLOR /*&& data.hue != previousHue*/) {
 
     previousHue = data.hue;
 
