@@ -67,7 +67,7 @@ const byte NUM_MENU_ITEMS_TO_DISPLAY = 3;
 // Formatting for display
 const byte LINE_SPACING = 5;  // space between each line
 
-// Menus
+// Display Menus
 const byte MAIN_MENU_LENGTH = 3;
 const char *MAIN_MENU_OPTIONS[MAIN_MENU_LENGTH] = { "1. List Peers", "2. ReScan", "3. Broadcast" };
 
@@ -78,11 +78,6 @@ const byte COLOR_OPTIONS_LENGTH = 9;
 
 const char *COLOR_OPTIONS[COLOR_OPTIONS_LENGTH] = { "Red", "Orange", "Yellow", "Green", "Aqua", "Blue", "Purple", "Pink", "Turn Off" /*Turn Off must always be last option!*/ };
 const byte COLOR_VALUES[COLOR_OPTIONS_LENGTH] = { 0, 32, 64, 96, 128, 160, 192, 224, 255 };
-
-// Flags for determine 1-to-1 or braodcast mode
-// TODO -> make this a single boolean flag isBroadcasting
-const byte ONE_TO_ONE = 0;
-const byte BROADCASTING = 1;
 
 // Button pins and timing
 const byte INCREMENT_BUTTON = 5;
@@ -293,9 +288,9 @@ void displayError(esp_err_t result) {
 }
 
 //TODO -> refactor to use a broadcast MAC address
-void sendData(byte RX_sel, byte MODE_sel) {
+void sendData(byte RX_sel, bool broadcastMode) {
 
-  if (MODE_sel == ONE_TO_ONE) {
+  if (!broadcastMode) {
 
     Serial.println("Mode Sel = one-to-one");
 
@@ -308,7 +303,7 @@ void sendData(byte RX_sel, byte MODE_sel) {
     displayError(result);
   }
 
-  if (MODE_sel == BROADCASTING) {
+  if (broadcastMode) {
 
     for (int i = 0; i < RXCnt; i++) {
       const uint8_t *peer_addr = receivers[i].peer_addr;
@@ -534,7 +529,7 @@ void loop() {
           Serial.println(" ");
 
           data_out.effect = CYLON;
-          sendData(RX_selected, isBroadcasting ? BROADCASTING : ONE_TO_ONE);
+          sendData(RX_selected, isBroadcasting);
 
         } else if (PACIFICA == currentSelection) {
           Serial.print("PACIFICA_SEL | currentSelection -> ");
@@ -542,7 +537,7 @@ void loop() {
           Serial.println(" ");
 
           data_out.effect = PACIFICA;
-          sendData(RX_selected, isBroadcasting ? BROADCASTING : ONE_TO_ONE);
+          sendData(RX_selected, isBroadcasting);
 
         } else if (RANDOM_REDS == currentSelection) {
           Serial.print("RANDOM_REDS_SEL | currentSelection -> ");
@@ -550,7 +545,7 @@ void loop() {
           Serial.println(" ");
 
           data_out.effect = RANDOM_REDS;
-          sendData(RX_selected, isBroadcasting ? BROADCASTING : ONE_TO_ONE);
+          sendData(RX_selected, isBroadcasting);
 
         } else if (TURN_OFF == currentSelection) {
           Serial.print("TURN_OFF | currentSelection -> ");
@@ -563,7 +558,7 @@ void loop() {
           //Adjust saturation and value to zero if "Turn Off" selected
           data_out.saturation = 0;
           data_out.value = 0;
-          sendData(RX_selected, isBroadcasting ? BROADCASTING : ONE_TO_ONE);
+          sendData(RX_selected, isBroadcasting);
         }
 
         selectionMade = false;
@@ -588,7 +583,7 @@ void loop() {
         //Adjust saturation and value to zero if "Turn Off" selected
         data_out.saturation = currentSelection == COLOR_OPTIONS_LENGTH - 1 ? 0 : 255;
         data_out.value = currentSelection == COLOR_OPTIONS_LENGTH - 1 ? 0 : 255;
-        sendData(RX_selected, isBroadcasting ? BROADCASTING : ONE_TO_ONE);
+        sendData(RX_selected, isBroadcasting);
       }
 
       // Handle selection
