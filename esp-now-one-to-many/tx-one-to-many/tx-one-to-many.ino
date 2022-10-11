@@ -9,7 +9,7 @@
  *
 
  NOTE: To add effect
-  -Create const for "effect name" in Select Effect section
+  -Create const for "effect name" in Select Effect Menu section
   -Add effect name in SEL_EFFECT_OPTIONS array (adjust size accordingly)
   -Add "else if" in SELECT_EFFECT case to handle effect
   -Add effect code to RXs code as necessary
@@ -27,7 +27,7 @@
 #endif
 
 // Global copy of RXs
-#define NUMRECEIVERS 20
+const byte NUMRECEIVERS = 20;
 
 esp_now_peer_info_t receivers[NUMRECEIVERS] = {};
 
@@ -35,38 +35,39 @@ esp_now_peer_info_t receivers[NUMRECEIVERS] = {};
 char peerSSIDs[20][32];  // This Works with displayPeers()
 byte RXCnt = 0;
 
-#define CHANNEL 1
-#define PRINTSCANRESULTS 1
+const byte CHANNEL = 1;
+const byte PRINTSCANRESULTS = 1;
 
 // States -> The determine which cases are run
-#define MAIN_MENU 0
-#define LIST_PEERS 1
-#define RESCAN 2
-#define BROADCAST 3
-#define SELECT_EFFECT 4
-#define CHANGE_COLOR 5
+const byte MAIN_MENU = 0;
+const byte LIST_PEERS = 1;
+const byte RESCAN = 2;
+const byte BROADCAST = 3;
+const byte SELECT_EFFECT = 4;
+const byte CHANGE_COLOR = 5;
 
 // Main Menu
-#define LIST_PEERS_SEL 0
-#define RESCAN_SEL 1
-#define BROADCAST_SEL 2
+const byte LIST_PEERS_SEL = 0;
+const byte RESCAN_SEL = 1;
+const byte BROADCAST_SEL = 2;
 
 // Select Effect Menu
-#define CHANGE_COLOR_SEL 0
-#define CYLON_SEL 1
-#define PACIFICA_SEL 2
-#define RANDOM_REDS_SEL 3
+const byte CHANGE_COLOR_SEL = 0;
+const byte CYLON_SEL = 1;
+const byte PACIFICA_SEL = 2;
+const byte RANDOM_REDS_SEL = 3;
 
 // List Peers menu options
-#define NUM_PEERS_TO_DISPLAY 3
-#define BACK_BUTTON_SPACER 1
-#define NUM_MENU_ITEMS_TO_DISPLAY 3
+const byte NUM_PEERS_TO_DISPLAY = 3;
+const byte BACK_BUTTON_SPACER = 1;
+const byte NUM_MENU_ITEMS_TO_DISPLAY = 3;
 
-//TODO get rid fo these and use the SELECT EFFECT CONSTANTS ABOVE
+//TODO Merge these and use the SELECT EFFECT CONSTANTS ABOVE
 const byte SOLID_COLOR = 0;
 const byte CYLON = 1;
 const byte PACIFICA = 2;
 const byte RANDOM_REDS = 3;
+const byte TURN_OFF = 4;
 
 // Formatting for display
 const byte LINE_SPACING = 5;  // space between each line
@@ -75,13 +76,13 @@ const byte LINE_SPACING = 5;  // space between each line
 const byte MAIN_MENU_LENGTH = 3;
 const char *MAIN_MENU_OPTIONS[MAIN_MENU_LENGTH] = { "1. List Peers", "2. ReScan", "3. Broadcast" };
 
-const byte SELECT_EFFECT_LENGTH = 5;
-const char *SEL_EFFECT_OPTIONS[SELECT_EFFECT_LENGTH] = { "1. Change Color", "2. Cyclon", "3. Pacifica", "4. Random Reds", "5. Back" };
+const byte SELECT_EFFECT_LENGTH = 6;
+const char *SEL_EFFECT_OPTIONS[SELECT_EFFECT_LENGTH] = { "1. Change Color", "2. Cyclon", "3. Pacifica", "4. Random Reds", "5. Turn Off", "6. Back" };
 
 const byte COLOR_OPTIONS_LENGTH = 9;
 
-const char *COLOR_OPTIONS[COLOR_OPTIONS_LENGTH] = { "Red", "Orange", "Yellow", "Green", "Aqua", "Blue", "Purple", "Pink", "Turn Off" /*Turn Off must always be last option!*/ }; 
-const byte COLOR_VALUES[COLOR_OPTIONS_LENGTH] = { 0, 32, 64, 96, 128, 160, 192, 224, 255};
+const char *COLOR_OPTIONS[COLOR_OPTIONS_LENGTH] = { "Red", "Orange", "Yellow", "Green", "Aqua", "Blue", "Purple", "Pink", "Turn Off" /*Turn Off must always be last option!*/ };
+const byte COLOR_VALUES[COLOR_OPTIONS_LENGTH] = { 0, 32, 64, 96, 128, 160, 192, 224, 255 };
 
 // Flags for determine 1-to-1 or braodcast mode
 // TODO -> make this a single boolean flag isBroadcasting
@@ -539,6 +540,15 @@ void loop() {
         } else if (RANDOM_REDS_SEL == currentSelection) {
           data_out.effect = RANDOM_REDS;
           sendData(RX_selected, isBroadcasting ? BROADCASTING : ONE_TO_ONE);
+
+        } else if (TURN_OFF == currentSelection) {
+          data_out.effect = SOLID_COLOR;
+          
+          data_out.hue = 255; // This value needs to be different then the previous hue sent to RX, or RX will not adjust
+          //Adjust saturation and value to zero if "Turn Off" selected
+          data_out.saturation = 0;
+          data_out.value = 0;
+          sendData(RX_selected, isBroadcasting ? BROADCASTING : ONE_TO_ONE);
         }
 
         selectionMade = false;
@@ -559,7 +569,7 @@ void loop() {
 
         data_out.effect = SOLID_COLOR;
         data_out.hue = COLOR_VALUES[currentSelection];
-        
+
         //Adjust saturation and value to zero if "Turn Off" selected
         data_out.saturation = currentSelection == COLOR_OPTIONS_LENGTH - 1 ? 0 : 255;
         data_out.value = currentSelection == COLOR_OPTIONS_LENGTH - 1 ? 0 : 255;

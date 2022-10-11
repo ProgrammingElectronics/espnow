@@ -8,42 +8,45 @@
  * @copyright Copyright (c) 2022
  *
  */
-//#define FASTLED_ESP8266_RAW_PIN_ORDER
-//#define FASTLED_ESP8266_NODEMCU_PIN_ORDER
 
-//#define FASTLED_ESP8266_D1_PIN_ORDER
+/*
+  I didn't need these, but maybe they could come in handy... 
+  #define FASTLED_ESP8266_RAW_PIN_ORDER
+  #define FASTLED_ESP8266_NODEMCU_PIN_ORDER
+  #define FASTLED_ESP8266_D1_PIN_ORDER  
+*/
 #include <FastLED.h>
 #include <espnow.h>
 #include <ESP8266WiFi.h>
 
-#define CHANNEL 1
+const byte CHANNEL = 1;
 
 // LED Effects
-#define FRAMES_PER_SECOND 120
+const int FRAMES_PER_SECOND = 120;
 
 const byte SOLID_COLOR = 0;
 const byte CYLON = 1;
 const byte PACIFICA = 2;
 const byte RANDOM_REDS = 3;
 
-// pins
-// Adafruit Feather Huzzah - pin 12
+/* pins
+ You may have to change this based on the RX dev board type.
+ pin 12 worked for me across the nodeMCU, Adafruit huzzah esp8266, and Wemos M1 clone 
+ */
 const byte DATA_PIN = 12;
 
 // LED array
 const byte NUM_LEDS = 12;
 CRGB leds[NUM_LEDS];
 
-typedef struct neopixel_data {
+// Where incoming data is stored
+struct neopixel_data {
   byte effect = SOLID_COLOR;
   bool display = true;
   byte hue = 100;
   byte saturation = 255;
   byte value = 255;
-} neopixel_data;
-
-// Where incoming data is stored
-neopixel_data data;
+} data;
 
 // Init ESP Now with fallback
 void InitESPNow() {
@@ -58,16 +61,18 @@ void InitESPNow() {
 
 // config AP SSID
 void configDeviceAP() {
-  //String Prefix = "RX_Ada_1:";
+  String Prefix = "RX_Ada_1:";
   //String Prefix = "RX_Ada_2:";
   //String Prefix = "RX_NodeMCU:";
-  String Prefix = "RX_D1MiniClone:";
+  //String Prefix = "RX_D1MiniClone:";
   String Mac = WiFi.macAddress();
   String SSID = Prefix;
   String Password = "123456789";
   bool result = WiFi.softAP(SSID.c_str(), Password.c_str(), CHANNEL, 0);
+
   if (!result) {
     Serial.println("AP Config failed.");
+
   } else {
     Serial.println("AP Config Success. Broadcasting with AP: " + String(SSID));
   }
@@ -175,6 +180,7 @@ void pacifica_one_layer(CRGBPalette16 &p, uint16_t cistart, uint16_t wavescale, 
   uint16_t ci = cistart;
   uint16_t waveangle = ioff;
   uint16_t wavescale_half = (wavescale / 2) + 20;
+
   for (uint16_t i = 0; i < NUM_LEDS; i++) {
     waveangle += 250;
     uint16_t s16 = sin16(waveangle) + 32768;
@@ -196,6 +202,7 @@ void pacifica_add_whitecaps() {
     uint8_t threshold = scale8(sin8(wave), 20) + basethreshold;
     wave += 7;
     uint8_t l = leds[i].getAverageLight();
+
     if (l > threshold) {
       uint8_t overage = l - threshold;
       uint8_t overage2 = qadd8(overage, overage);
@@ -206,6 +213,7 @@ void pacifica_add_whitecaps() {
 
 // Deepen the blues and greens
 void pacifica_deepen_colors() {
+
   for (uint16_t i = 0; i < NUM_LEDS; i++) {
     leds[i].blue = scale8(leds[i].blue, 145);
     leds[i].green = scale8(leds[i].green, 200);
@@ -262,14 +270,18 @@ void loop() {
     for (int i = 0; i < NUM_LEDS; i++) {
       leds[i] = CHSV(data.hue, data.saturation, data.value);
     }
+
     FastLED.show();
+
   } else if (data.effect == CYLON) {
     cyclon();
+
   } else if (data.effect == PACIFICA) {
     EVERY_N_MILLISECONDS(20) {
       pacifica_loop();
       FastLED.show();
     }
+
   } else if (data.effect == RANDOM_REDS) {
     EVERY_N_MILLISECONDS(20) {
       randomReds();
