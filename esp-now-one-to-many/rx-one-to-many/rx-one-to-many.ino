@@ -22,12 +22,12 @@
 const byte CHANNEL = 1;
 
 // LED Effects
-const int FRAMES_PER_SECOND = 120;
-
 const byte CHANGE_COLOR = 0;
 const byte CYLON = 1;
 const byte PACIFICA = 2;
 const byte RANDOM_REDS = 3;
+
+const int FRAMES_PER_SECOND = 120;
 
 /* pins
  You may have to change this based on the RX dev board type.
@@ -61,6 +61,13 @@ void InitESPNow() {
 
 // config AP SSID
 void configDeviceAP() {
+  /*  Choose a specific SSID for THIS device.
+      It must start with "RX_" to be identified by the TX device.
+      
+      TODO ->Ideally, this might be an array of your target RX board names,
+      and then just change an index in stead of commenting out the ones you don't want. 
+  */
+
   //String Prefix = "RX_Ada_1:";
   String Prefix = "RX_Ada_2:";
   //String Prefix = "RX_NodeMCU:";
@@ -259,7 +266,7 @@ void setup() {
 }
 
 void loop() {
-  static byte previousEffect = data.effect;
+  
   static byte previousHue = data.hue;
 
   //Display Solid Color

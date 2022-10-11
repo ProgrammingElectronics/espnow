@@ -32,7 +32,7 @@ const byte NUMRECEIVERS = 20;
 esp_now_peer_info_t receivers[NUMRECEIVERS] = {};
 
 // Store the SSID of each connected network
-char peerSSIDs[20][32];  // This Works with displayPeers()
+char peerSSIDs[20][32];
 byte RXCnt = 0;
 
 const byte CHANNEL = 1;
@@ -63,7 +63,6 @@ const byte NUM_PEERS_TO_DISPLAY = 3;
 const byte BACK_BUTTON_SPACER = 1;
 const byte NUM_MENU_ITEMS_TO_DISPLAY = 3;
 
-
 // Formatting for display
 const byte LINE_SPACING = 5;  // space between each line
 
@@ -88,7 +87,7 @@ const int DEBOUNCE = 250;
 volatile byte currentSelection = 0;
 volatile bool selectionMade = false;
 
-// variables to keep track of the timing of recent interrupts
+// Keep track of the timing of for button debounce done in interrupts
 volatile unsigned long incr_button_time = 0;
 volatile unsigned long sel_button_time = 0;
 volatile unsigned long last_incr_button_time = 0;
@@ -105,6 +104,10 @@ struct neopixel_data {
 
 // Display
 U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* clock=*/SCL, /* data=*/SDA, /* reset=*/U8X8_PIN_NONE);  // High speed I2C
+
+/****************************************************************
+  ESPNOW FUNCTIONS
+*****************************************************************/
 
 // Init ESP Now with fallback
 void InitESPNow() {
@@ -260,7 +263,6 @@ void manageReceiver() {
   }
 }
 
-
 void displayError(esp_err_t result) {
   Serial.print("Send Status: ");
   if (result == ESP_OK) {
@@ -338,22 +340,9 @@ void displayMenu(const char *menuArray[], byte len) {
   u8g2.sendBuffer();  // transfer internal memory to the display
 }
 
-void rescan() {
-  u8g2.clearBuffer();
-  u8g2.drawButtonUTF8(1, 10, U8G2_BTN_INV, 0, 2, 2, "Scanning...");
-  u8g2.sendBuffer();
-
-  ScanForReceivers();
-  manageReceiver();
-}
-
-void limitSelection(uint8_t max_selection) {
-
-  if (currentSelection >= max_selection) {
-    currentSelection = 0;
-  }
-}
-
+/****************************************************************
+  INTERRUPT SERVICE ROUTINES for button presses
+*****************************************************************/
 void IRAM_ATTR incrementButton() {
 
   incr_button_time = millis();
@@ -376,6 +365,34 @@ void IRAM_ATTR selectButton() {
   }
 }
 
+/****************************************************************
+  CASE FUNCTIONS
+*****************************************************************/
+
+void rescan() {
+  u8g2.clearBuffer();
+  u8g2.drawButtonUTF8(1, 10, U8G2_BTN_INV, 0, 2, 2, "Scanning...");
+  u8g2.sendBuffer();
+
+  ScanForReceivers();
+  manageReceiver();
+}
+
+/****************************************************************
+  HELPER FUNCTIONS
+*****************************************************************/
+
+void limitSelection(uint8_t max_selection) {
+
+  if (currentSelection >= max_selection) {
+    currentSelection = 0;
+  }
+}
+
+/****************************************************************
+  Setup
+*****************************************************************/
+
 void setup() {
   Serial.begin(115200);
 
@@ -388,9 +405,11 @@ void setup() {
   // Set device in STA mode to begin with
   WiFi.mode(WIFI_STA);
   Serial.println("Wifi Mode Set.");
+  
   // Init ESPNow with a fallback logic
   InitESPNow();
   Serial.println("ESPNow Init");
+  
   // Once ESPNow is successfully Init, we will register for Send CB to
   // get the status of Trasnmitted packet
   esp_now_register_send_cb(OnDataSent);
@@ -404,6 +423,10 @@ void setup() {
   u8g2.setFont(u8g2_font_7x13B_tf);  // choose a suitable font
   Serial.print("Setup Complete");
 }
+
+/****************************************************************
+  Loop
+*****************************************************************/
 
 void loop() {
 
