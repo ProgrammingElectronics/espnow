@@ -287,37 +287,27 @@ void displayError(esp_err_t result) {
   }
 }
 
-//TODO -> refactor to use a broadcast MAC address
+
 void sendData(byte RX_sel, bool broadcastMode) {
 
+  //Set address for specific peer (not used when broadcasting)
+  const uint8_t *peer_addr = receivers[RX_sel].peer_addr;
+
   if (!broadcastMode) {
-
-    Serial.println("Mode Sel = one-to-one");
-
-    const uint8_t *peer_addr = receivers[RX_sel].peer_addr;
-
     Serial.print("Sending to SSID: ");
     Serial.println(peerSSIDs[RX_sel]);
-
-    esp_err_t result = esp_now_send(peer_addr, (uint8_t *)&data_out, sizeof(data_out));
-    displayError(result);
+  } else {
+    Serial.print("Broadcatsing to all");
   }
 
-  if (broadcastMode) {
-
-    for (int i = 0; i < RXCnt; i++) {
-      const uint8_t *peer_addr = receivers[i].peer_addr;
-
-      if (i == 0) {  // print only for first receiver
-        Serial.print("Sending: ");
-        Serial.println(data_out.effect);
-      }
-
-      esp_err_t result = esp_now_send(peer_addr, (uint8_t *)&data_out, sizeof(data_out));
-      displayError(result);
-      delay(100);
-    }
-  }
+  /*
+    According to esp_now_send documentation, if first parameter is NULL, 
+    it sends to all the addressess in the peer list.  I *assume* it is using the broadcast address {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}?  
+    As opposed to a for loop that iterates through the all the peers in the peer list...
+    In either case, I am not sure it matters. 
+   */
+  esp_err_t result = esp_now_send(broadcastMode ? NULL : peer_addr, (uint8_t *)&data_out, sizeof(data_out));
+  displayError(result);
 }
 
 // callback when data is sent from Transmitter to Receiver
