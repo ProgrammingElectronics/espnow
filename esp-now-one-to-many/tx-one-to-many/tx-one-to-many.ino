@@ -9,7 +9,7 @@
  *
 
  NOTE: To add effect
-  -Create const for "effect name" in Select Effect section
+  -Create const for "effect name" in Select Effect Menu section
   -Add effect name in SEL_EFFECT_OPTIONS array (adjust size accordingly)
   -Add "else if" in SELECT_EFFECT case to handle effect
   -Add effect code to RXs code as necessary
@@ -27,66 +27,56 @@
 #endif
 
 // Global copy of RXs
-#define NUMRECEIVERS 20
+const byte NUMRECEIVERS = 20;
 
 esp_now_peer_info_t receivers[NUMRECEIVERS] = {};
 
 // Store the SSID of each connected network
-char peerSSIDs[20][32];  // This Works with displayPeers()
+char peerSSIDs[20][32];
 byte RXCnt = 0;
 
-#define CHANNEL 1
-#define PRINTSCANRESULTS 1
+const byte CHANNEL = 1;
+const byte PRINTSCANRESULTS = 1;
 
 // States -> The determine which cases are run
-#define MAIN_MENU 0
-#define LIST_PEERS 1
-#define RESCAN 2
-#define BROADCAST 3
-#define SELECT_EFFECT 4
-#define CHANGE_COLOR 5
+const byte MAIN_MENU = 0;
+const byte LIST_PEERS = 1;
+const byte RESCAN = 2;
+const byte BROADCAST = 3;
+const byte SELECT_EFFECT = 4;
+const byte SOLID_COLOR = 5;
 
 // Main Menu
-#define LIST_PEERS_SEL 0
-#define RESCAN_SEL 1
-#define BROADCAST_SEL 2
+const byte LIST_PEERS_SEL = 0;
+const byte RESCAN_SEL = 1;
+const byte BROADCAST_SEL = 2;
 
-// Select Effect Menu
-#define CHANGE_COLOR_SEL 0
-#define CYLON_SEL 1
-#define PACIFICA_SEL 2
-#define RANDOM_REDS_SEL 3
-
-// List Peers menu options
-#define NUM_PEERS_TO_DISPLAY 3
-#define BACK_BUTTON_SPACER 1
-#define NUM_MENU_ITEMS_TO_DISPLAY 3
-
-//TODO get rid fo these and use the SELECT EFFECT CONSTANTS ABOVE
-const byte SOLID_COLOR = 0;
+//Select Effect Menu Options
+const byte CHANGE_COLOR = 0;
 const byte CYLON = 1;
 const byte PACIFICA = 2;
 const byte RANDOM_REDS = 3;
+const byte TURN_OFF = 4;
+
+// List Peers menu options
+const byte NUM_PEERS_TO_DISPLAY = 3;
+const byte BACK_BUTTON_SPACER = 1;
+const byte NUM_MENU_ITEMS_TO_DISPLAY = 3;
 
 // Formatting for display
 const byte LINE_SPACING = 5;  // space between each line
 
-// Menus
+// Display Menus
 const byte MAIN_MENU_LENGTH = 3;
 const char *MAIN_MENU_OPTIONS[MAIN_MENU_LENGTH] = { "1. List Peers", "2. ReScan", "3. Broadcast" };
 
-const byte SELECT_EFFECT_LENGTH = 5;
-const char *SEL_EFFECT_OPTIONS[SELECT_EFFECT_LENGTH] = { "1. Change Color", "2. Cyclon", "3. Pacifica", "4. Random Reds", "5. Back" };
+const byte SELECT_EFFECT_LENGTH = 6;
+const char *SEL_EFFECT_OPTIONS[SELECT_EFFECT_LENGTH] = { "1. Change Color", "2. Cyclon", "3. Pacifica", "4. Random Reds", "5. Turn Off", "6. Back" };
 
 const byte COLOR_OPTIONS_LENGTH = 9;
 
-const char *COLOR_OPTIONS[COLOR_OPTIONS_LENGTH] = { "Red", "Orange", "Yellow", "Green", "Aqua", "Blue", "Purple", "Pink", "Turn Off" /*Turn Off must always be last option!*/ }; 
-const byte COLOR_VALUES[COLOR_OPTIONS_LENGTH] = { 0, 32, 64, 96, 128, 160, 192, 224, 255};
-
-// Flags for determine 1-to-1 or braodcast mode
-// TODO -> make this a single boolean flag isBroadcasting
-const byte ONE_TO_ONE = 0;
-const byte BROADCASTING = 1;
+const char *COLOR_OPTIONS[COLOR_OPTIONS_LENGTH] = { "Red", "Orange", "Yellow", "Green", "Aqua", "Blue", "Purple", "Pink", "Turn Off" /*Turn Off must always be last option!*/ };
+const byte COLOR_VALUES[COLOR_OPTIONS_LENGTH] = { 0, 32, 64, 96, 128, 160, 192, 224, 255 };
 
 // Button pins and timing
 const byte INCREMENT_BUTTON = 5;
@@ -97,7 +87,7 @@ const int DEBOUNCE = 250;
 volatile byte currentSelection = 0;
 volatile bool selectionMade = false;
 
-// variables to keep track of the timing of recent interrupts
+// Keep track of the timing of for button debounce done in interrupts
 volatile unsigned long incr_button_time = 0;
 volatile unsigned long sel_button_time = 0;
 volatile unsigned long last_incr_button_time = 0;
@@ -114,6 +104,10 @@ struct neopixel_data {
 
 // Display
 U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* clock=*/SCL, /* data=*/SDA, /* reset=*/U8X8_PIN_NONE);  // High speed I2C
+
+/****************************************************************
+  ESPNOW FUNCTIONS
+*****************************************************************/
 
 // Init ESP Now with fallback
 void InitESPNow() {
@@ -269,7 +263,6 @@ void manageReceiver() {
   }
 }
 
-
 void displayError(esp_err_t result) {
   Serial.print("Send Status: ");
   if (result == ESP_OK) {
@@ -296,37 +289,27 @@ void displayError(esp_err_t result) {
   }
 }
 
-//TODO -> refactor to use a broadcast MAC address
-void sendData(byte RX_sel, byte MODE_sel) {
 
-  if (MODE_sel == ONE_TO_ONE) {
+void sendData(byte RX_sel, bool broadcastMode) {
 
-    Serial.println("Mode Sel = one-to-one");
+  //Set address for specific peer (not used when broadcasting)
+  const uint8_t *peer_addr = receivers[RX_sel].peer_addr;
 
-    const uint8_t *peer_addr = receivers[RX_sel].peer_addr;
-
+  if (!broadcastMode) {
     Serial.print("Sending to SSID: ");
     Serial.println(peerSSIDs[RX_sel]);
-
-    esp_err_t result = esp_now_send(peer_addr, (uint8_t *)&data_out, sizeof(data_out));
-    displayError(result);
+  } else {
+    Serial.print("Broadcatsing to all");
   }
 
-  if (MODE_sel == BROADCASTING) {
-
-    for (int i = 0; i < RXCnt; i++) {
-      const uint8_t *peer_addr = receivers[i].peer_addr;
-
-      if (i == 0) {  // print only for first receiver
-        Serial.print("Sending: ");
-        Serial.println(data_out.effect);
-      }
-
-      esp_err_t result = esp_now_send(peer_addr, (uint8_t *)&data_out, sizeof(data_out));
-      displayError(result);
-      delay(100);
-    }
-  }
+  /*
+    According to esp_now_send documentation, if first parameter is NULL, 
+    it sends to all the addressess in the peer list.  I *assume* it is using the broadcast address {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}?  
+    As opposed to a for loop that iterates through the all the peers in the peer list...
+    In either case, I am not sure it matters. 
+   */
+  esp_err_t result = esp_now_send(broadcastMode ? NULL : peer_addr, (uint8_t *)&data_out, sizeof(data_out));
+  displayError(result);
 }
 
 // callback when data is sent from Transmitter to Receiver
@@ -357,22 +340,9 @@ void displayMenu(const char *menuArray[], byte len) {
   u8g2.sendBuffer();  // transfer internal memory to the display
 }
 
-void rescan() {
-  u8g2.clearBuffer();
-  u8g2.drawButtonUTF8(1, 10, U8G2_BTN_INV, 0, 2, 2, "Scanning...");
-  u8g2.sendBuffer();
-
-  ScanForReceivers();
-  manageReceiver();
-}
-
-void limitSelection(uint8_t max_selection) {
-
-  if (currentSelection >= max_selection) {
-    currentSelection = 0;
-  }
-}
-
+/****************************************************************
+  INTERRUPT SERVICE ROUTINES for button presses
+*****************************************************************/
 void IRAM_ATTR incrementButton() {
 
   incr_button_time = millis();
@@ -395,6 +365,34 @@ void IRAM_ATTR selectButton() {
   }
 }
 
+/****************************************************************
+  CASE FUNCTIONS
+*****************************************************************/
+
+void rescan() {
+  u8g2.clearBuffer();
+  u8g2.drawButtonUTF8(1, 10, U8G2_BTN_INV, 0, 2, 2, "Scanning...");
+  u8g2.sendBuffer();
+
+  ScanForReceivers();
+  manageReceiver();
+}
+
+/****************************************************************
+  HELPER FUNCTIONS
+*****************************************************************/
+
+void limitSelection(uint8_t max_selection) {
+
+  if (currentSelection >= max_selection) {
+    currentSelection = 0;
+  }
+}
+
+/****************************************************************
+  Setup
+*****************************************************************/
+
 void setup() {
   Serial.begin(115200);
 
@@ -407,9 +405,11 @@ void setup() {
   // Set device in STA mode to begin with
   WiFi.mode(WIFI_STA);
   Serial.println("Wifi Mode Set.");
+  
   // Init ESPNow with a fallback logic
   InitESPNow();
   Serial.println("ESPNow Init");
+  
   // Once ESPNow is successfully Init, we will register for Send CB to
   // get the status of Trasnmitted packet
   esp_now_register_send_cb(OnDataSent);
@@ -423,6 +423,10 @@ void setup() {
   u8g2.setFont(u8g2_font_7x13B_tf);  // choose a suitable font
   Serial.print("Setup Complete");
 }
+
+/****************************************************************
+  Loop
+*****************************************************************/
 
 void loop() {
 
@@ -524,21 +528,50 @@ void loop() {
           currentState = isBroadcasting ? MAIN_MENU : LIST_PEERS;
           currentSelection = 0;  // Start at first menu item
 
-        } else if (CHANGE_COLOR_SEL == currentSelection) {
-          currentState = CHANGE_COLOR;
+        } else if (CHANGE_COLOR == currentSelection) {
+          Serial.print("CHANGE_COLOR_SEL | currentSelection -> ");
+          Serial.println(currentSelection);
+          Serial.println(" ");
+
+          currentState = SOLID_COLOR;
           previousSelection = currentSelection + 1;  // Make sure new menu is displayed
 
-        } else if (CYLON_SEL == currentSelection) {
+        } else if (CYLON == currentSelection) {
+          Serial.print("CYLON_SEL | currentSelection -> ");
+          Serial.println(currentSelection);
+          Serial.println(" ");
+
           data_out.effect = CYLON;
-          sendData(RX_selected, isBroadcasting ? BROADCASTING : ONE_TO_ONE);
+          sendData(RX_selected, isBroadcasting);
 
-        } else if (PACIFICA_SEL == currentSelection) {
+        } else if (PACIFICA == currentSelection) {
+          Serial.print("PACIFICA_SEL | currentSelection -> ");
+          Serial.println(currentSelection);
+          Serial.println(" ");
+
           data_out.effect = PACIFICA;
-          sendData(RX_selected, isBroadcasting ? BROADCASTING : ONE_TO_ONE);
+          sendData(RX_selected, isBroadcasting);
 
-        } else if (RANDOM_REDS_SEL == currentSelection) {
+        } else if (RANDOM_REDS == currentSelection) {
+          Serial.print("RANDOM_REDS_SEL | currentSelection -> ");
+          Serial.println(currentSelection);
+          Serial.println(" ");
+
           data_out.effect = RANDOM_REDS;
-          sendData(RX_selected, isBroadcasting ? BROADCASTING : ONE_TO_ONE);
+          sendData(RX_selected, isBroadcasting);
+
+        } else if (TURN_OFF == currentSelection) {
+          Serial.print("TURN_OFF | currentSelection -> ");
+          Serial.println(currentSelection);
+          Serial.println(" ");
+
+          data_out.effect = CHANGE_COLOR;  //Turn Off use the Solid Color
+
+          data_out.hue = 255;  // This value needs to be different then the previous hue sent to RX, or RX will not adjust
+          //Adjust saturation and value to zero if "Turn Off" selected
+          data_out.saturation = 0;
+          data_out.value = 0;
+          sendData(RX_selected, isBroadcasting);
         }
 
         selectionMade = false;
@@ -546,7 +579,7 @@ void loop() {
 
       break;
 
-    case (CHANGE_COLOR):
+    case (SOLID_COLOR):
 
       // Limit Selection
       limitSelection(COLOR_OPTIONS_LENGTH);
@@ -557,13 +590,13 @@ void loop() {
         displayMenu(COLOR_OPTIONS, COLOR_OPTIONS_LENGTH);
         previousSelection = currentSelection;
 
-        data_out.effect = SOLID_COLOR;
+        data_out.effect = CHANGE_COLOR;
         data_out.hue = COLOR_VALUES[currentSelection];
-        
+
         //Adjust saturation and value to zero if "Turn Off" selected
         data_out.saturation = currentSelection == COLOR_OPTIONS_LENGTH - 1 ? 0 : 255;
         data_out.value = currentSelection == COLOR_OPTIONS_LENGTH - 1 ? 0 : 255;
-        sendData(RX_selected, isBroadcasting ? BROADCASTING : ONE_TO_ONE);
+        sendData(RX_selected, isBroadcasting);
       }
 
       // Handle selection
