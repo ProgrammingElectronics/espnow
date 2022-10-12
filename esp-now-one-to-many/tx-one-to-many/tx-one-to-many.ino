@@ -533,43 +533,28 @@ void loop() {
           currentSelection = 0;  // Start at first menu item
 
         } else if (CHANGE_COLOR == currentSelection) {
-          Serial.print("CHANGE_COLOR_SEL | currentSelection -> ");
-          Serial.println(currentSelection);
-          Serial.println(" ");
 
           currentState = SOLID_COLOR;
           previousSelection = currentSelection + 1;  // Make sure new menu is displayed
 
         } else if (CYLON == currentSelection) {
-          Serial.print("CYLON_SEL | currentSelection -> ");
-          Serial.println(currentSelection);
-          Serial.println(" ");
 
           data_out.effect = CYLON;
           sendData(RX_selected, isBroadcasting);
 
         } else if (PACIFICA == currentSelection) {
-          Serial.print("PACIFICA_SEL | currentSelection -> ");
-          Serial.println(currentSelection);
-          Serial.println(" ");
 
           data_out.effect = PACIFICA;
           sendData(RX_selected, isBroadcasting);
 
         } else if (RANDOM_REDS == currentSelection) {
-          Serial.print("RANDOM_REDS_SEL | currentSelection -> ");
-          Serial.println(currentSelection);
-          Serial.println(" ");
 
           data_out.effect = RANDOM_REDS;
           sendData(RX_selected, isBroadcasting);
 
         } else if (TURN_OFF == currentSelection) {
-          Serial.print("TURN_OFF | currentSelection -> ");
-          Serial.println(currentSelection);
-          Serial.println(" ");
 
-          data_out.effect = CHANGE_COLOR;  //Turn Off use the Solid Color
+          data_out.effect = CHANGE_COLOR;
 
           data_out.hue = 255;  // This value needs to be different then the previous hue sent to RX, or RX will not adjust
           //Adjust saturation and value to zero if "Turn Off" selected
