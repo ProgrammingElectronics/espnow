@@ -68,8 +68,8 @@ void configDeviceAP() {
       and then just change an index in stead of commenting out the ones you don't want. 
   */
 
-  //String Prefix = "RX_Ada_1:";
-  String Prefix = "RX_Ada_2:";
+  String Prefix = "RX_Ada_1:";
+  //String Prefix = "RX_Ada_2:";
   //String Prefix = "RX_NodeMCU:";
   //String Prefix = "RX_D1MiniClone:";
   String Mac = WiFi.macAddress();
@@ -266,12 +266,12 @@ void setup() {
 }
 
 void loop() {
-  
+
   static byte previousHue = data.hue;
 
   //Display Solid Color
-  if (data.effect == CHANGE_COLOR /*&& data.hue != previousHue*/) {
-
+  if (data.effect == CHANGE_COLOR && data.hue != previousHue) {
+    Serial.println("Change Color!!!");
     previousHue = data.hue;
 
     for (int i = 0; i < NUM_LEDS; i++) {
@@ -294,5 +294,10 @@ void loop() {
       randomReds();
       FastLED.show();
     }
+  }
+
+  //Ensure that CHANGE COLOR EFFECT  
+  if (data.effect != CHANGE_COLOR) {
+    previousHue = NULL;
   }
 }
