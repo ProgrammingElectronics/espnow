@@ -33,13 +33,13 @@ const int FRAMES_PER_SECOND = 120;
  You may have to change this based on the RX dev board type.
  pin 12 worked for me across the nodeMCU, Adafruit huzzah esp8266, and Wemos M1 clone 
  */
-const byte DATA_PIN = 12;
+const byte DATA_PIN = 12; // NEOpixel data pin
 
 // LED array
-const byte NUM_LEDS = 12;
+const byte NUM_LEDS = 12; // Adjust for different LED stip lengths
 CRGB leds[NUM_LEDS];
 
-// Where incoming data is stored
+// Where data from TX is stored -> this determings what gets displayed on the LEDs
 struct neopixel_data {
   byte effect = CHANGE_COLOR;
   bool display = true;
@@ -50,7 +50,32 @@ struct neopixel_data {
 
 
 /*************************************************************
-  ESPNOW Function
+  IMPORTANT!  Ideally each RX device gets its own unique SSID.
+              This way, in the list of SSIDs on the TX, you can 
+              determine which is which.  When uploading to a 
+              RX, change the names saved in SIID_NAMES array
+              to match your devices, and change thisDeviceSSID 
+              to the index of the name you want from the 
+              SSID_NAMES.  You'll have to change thisDeviceSSID
+              every time you upload to a different widget.
+
+              TODO: Set this up so it can be done over WiFi
+              with a phone app.
+*************************************************************/
+const byte thisDeviceSSID = 2;
+
+const byte MAX_PEERS = 20;
+const String SSID_NAMES[MAX_PEERS] = {
+  /* SSID names over 17 chars will be removed (in TX code) to fit on screen */
+  /* 0 */ "Ada_1",
+  /* 1 */ "Ada_2",
+  /* 2 */ "NodeMCU",
+  /* 3 */ "D1MiniClone"
+  /*      "|<-Max 17 char->|" */
+};
+
+/*************************************************************
+  ESPNOW Functions
 *************************************************************/
 
 // Init ESP Now with fallback
@@ -66,17 +91,8 @@ void InitESPNow() {
 
 // config AP SSID
 void configDeviceAP() {
-  /*  Choose a specific SSID for THIS device.
-      It must start with "RX_" to be identified by the TX device.
-      
-      TODO ->Ideally, this might be an array of your target RX board names,
-      and then just change an index in stead of commenting out the ones you don't want. 
-  */
 
-  String Prefix = "RX_Ada_1:";
-  //String Prefix = "RX_Ada_2:";
-  //String Prefix = "RX_NodeMCU:";
-  //String Prefix = "RX_D1MiniClone:";
+  String Prefix = "RX_" + SSID_NAMES[thisDeviceSSID];
   String Mac = WiFi.macAddress();
   String SSID = Prefix;
   String Password = "123456789";
@@ -117,7 +133,7 @@ void fadeall() {
 }
 
 /*************************************************************
-  Cyclon Effect
+  Cyclon Effect from FastLED library example code
 *************************************************************/
 void cyclon() {
   static uint8_t hue = 0;
@@ -129,7 +145,6 @@ void cyclon() {
     // Show the leds
     FastLED.show();
     // now that we've shown the leds, reset the i'th led to black
-    // leds[i] = CRGB::Black;
     fadeall();
     // Wait a little bit before we loop around and do it again
     delay(10);
@@ -250,7 +265,7 @@ void randomReds() {
 }
 
 /*************************************************************
-  Chaneg All Color Effect
+  Change All Color Effect
 *************************************************************/
 void changeAllColor() {
   for (int i = 0; i < NUM_LEDS; i++) {
@@ -266,24 +281,27 @@ void changeAllColor() {
 void setup() {
   Serial.begin(115200);
 
-  // Set device in AP mode to begin with
-  WiFi.mode(WIFI_AP);
-  // configure device AP mode
-  configDeviceAP();
+  WiFi.mode(WIFI_AP); 
+  configDeviceAP(); 
+
   // This is the mac address of the Receiver in AP Mode
   Serial.print("AP MAC: ");
   Serial.println(WiFi.softAPmacAddress());
   Serial.print("SSID: ");
   Serial.println();
+  
   // Init ESPNow with a fallback logic
   InitESPNow();
+  
   // Once ESPNow is successfully Init, we will register for recv CB to
   // get recv packer info.
   esp_now_register_recv_cb(OnDataRecv);
 
+  // FastLED setup stuff
   FastLED.addLeds<WS2812B, DATA_PIN, GRB>(leds, NUM_LEDS);
   FastLED.setBrightness(84);
 
+  //Set the first LED to Red as a visual indicator the code is loaded
   leds[0] = CHSV(255, 255, 255);
   FastLED.show();
 }

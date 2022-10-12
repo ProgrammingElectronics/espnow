@@ -26,17 +26,19 @@
 #include <Wire.h>
 #endif
 
-// Global copy of RXs
+// RX information and storage
 const byte NUMRECEIVERS = 20;
-
 esp_now_peer_info_t receivers[NUMRECEIVERS] = {};
-
-// Store the SSID of each connected network
-char peerSSIDs[20][32];
-byte RXCnt = 0;
 
 const byte CHANNEL = 1;
 const byte PRINTSCANRESULTS = 1;
+
+// Store the SSID of each connected network
+const byte MAX_PEERS = 20;
+const byte MAX_SSID_DISPLAY_LEN = 20;
+char peerSSIDs[MAX_PEERS][MAX_SSID_DISPLAY_LEN];
+byte RXCnt = 0;
+
 
 // States -> The determine which cases are run
 const byte MAIN_MENU = 0;
@@ -183,8 +185,10 @@ void ScanForReceivers() {
         }
         receivers[RXCnt].channel = CHANNEL;  // pick a channel
         receivers[RXCnt].encrypt = 0;        // no encryption
-
-        SSID.toCharArray(peerSSIDs[RXCnt], SSID.length());  // This copies the appropriate chars strings into peerSSID[][] and work with displayPeers()
+        
+        //Remove the "RX_" from the beginning of the SSID and limit length for display
+        SSID = SSID.substring(3,MAX_SSID_DISPLAY_LEN);
+        SSID.toCharArray(peerSSIDs[RXCnt], SSID.length() + 1);  // This copies the appropriate chars strings into peerSSID[][]
 
         RXCnt++;
       }
