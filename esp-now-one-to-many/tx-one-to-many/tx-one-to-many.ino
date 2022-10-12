@@ -26,17 +26,19 @@
 #include <Wire.h>
 #endif
 
-// Global copy of RXs
+// RX information and storage
 const byte NUMRECEIVERS = 20;
-
 esp_now_peer_info_t receivers[NUMRECEIVERS] = {};
-
-// Store the SSID of each connected network
-char peerSSIDs[20][32];
-byte RXCnt = 0;
 
 const byte CHANNEL = 1;
 const byte PRINTSCANRESULTS = 1;
+
+// Store the SSID of each connected network
+const byte MAX_PEERS = 20;
+const byte MAX_SSID_DISPLAY_LEN = 20;
+char peerSSIDs[MAX_PEERS][MAX_SSID_DISPLAY_LEN];
+byte RXCnt = 0;
+
 
 // States -> The determine which cases are run
 const byte MAIN_MENU = 0;
@@ -183,8 +185,10 @@ void ScanForReceivers() {
         }
         receivers[RXCnt].channel = CHANNEL;  // pick a channel
         receivers[RXCnt].encrypt = 0;        // no encryption
-
-        SSID.toCharArray(peerSSIDs[RXCnt], SSID.length());  // This copies the appropriate chars strings into peerSSID[][] and work with displayPeers()
+        
+        //Remove the "RX_" from the beginning of the SSID and limit length for display
+        SSID = SSID.substring(3,MAX_SSID_DISPLAY_LEN);
+        SSID.toCharArray(peerSSIDs[RXCnt], SSID.length() + 1);  // This copies the appropriate chars strings into peerSSID[][]
 
         RXCnt++;
       }
@@ -529,43 +533,28 @@ void loop() {
           currentSelection = 0;  // Start at first menu item
 
         } else if (CHANGE_COLOR == currentSelection) {
-          Serial.print("CHANGE_COLOR_SEL | currentSelection -> ");
-          Serial.println(currentSelection);
-          Serial.println(" ");
 
           currentState = SOLID_COLOR;
           previousSelection = currentSelection + 1;  // Make sure new menu is displayed
 
         } else if (CYLON == currentSelection) {
-          Serial.print("CYLON_SEL | currentSelection -> ");
-          Serial.println(currentSelection);
-          Serial.println(" ");
 
           data_out.effect = CYLON;
           sendData(RX_selected, isBroadcasting);
 
         } else if (PACIFICA == currentSelection) {
-          Serial.print("PACIFICA_SEL | currentSelection -> ");
-          Serial.println(currentSelection);
-          Serial.println(" ");
 
           data_out.effect = PACIFICA;
           sendData(RX_selected, isBroadcasting);
 
         } else if (RANDOM_REDS == currentSelection) {
-          Serial.print("RANDOM_REDS_SEL | currentSelection -> ");
-          Serial.println(currentSelection);
-          Serial.println(" ");
 
           data_out.effect = RANDOM_REDS;
           sendData(RX_selected, isBroadcasting);
 
         } else if (TURN_OFF == currentSelection) {
-          Serial.print("TURN_OFF | currentSelection -> ");
-          Serial.println(currentSelection);
-          Serial.println(" ");
 
-          data_out.effect = CHANGE_COLOR;  //Turn Off use the Solid Color
+          data_out.effect = CHANGE_COLOR;
 
           data_out.hue = 255;  // This value needs to be different then the previous hue sent to RX, or RX will not adjust
           //Adjust saturation and value to zero if "Turn Off" selected
