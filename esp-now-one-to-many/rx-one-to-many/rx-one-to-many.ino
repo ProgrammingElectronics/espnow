@@ -48,6 +48,11 @@ struct neopixel_data {
   byte value = 255;
 } data;
 
+
+/*************************************************************
+  ESPNOW Function
+*************************************************************/
+
 // Init ESP Now with fallback
 void InitESPNow() {
   WiFi.disconnect();
@@ -100,12 +105,20 @@ void OnDataRecv(uint8_t *mac_addr, uint8_t *dataIn, uint8_t data_len) {
   Serial.println("");
 }
 
+/*************************************************************
+  Helper Functions
+*************************************************************/
+
+//Fade all LEDs
 void fadeall() {
   for (int i = 0; i < NUM_LEDS; i++) {
     leds[i].nscale8(250);
   }
 }
 
+/*************************************************************
+  Cyclon Effect
+*************************************************************/
 void cyclon() {
   static uint8_t hue = 0;
 
@@ -136,9 +149,9 @@ void cyclon() {
   }
 }
 
-/*
-Pacifica Effect
-*/
+/*************************************************************
+  Pacifica Effect used from FastLED Library example code
+*************************************************************/
 
 CRGBPalette16 pacifica_palette_1 = { 0x000507, 0x000409, 0x00030B, 0x00030D, 0x000210, 0x000212, 0x000114, 0x000117,
                                      0x000019, 0x00001C, 0x000026, 0x000031, 0x00003B, 0x000046, 0x14554B, 0x28AA50 };
@@ -146,7 +159,6 @@ CRGBPalette16 pacifica_palette_2 = { 0x000507, 0x000409, 0x00030B, 0x00030D, 0x0
                                      0x000019, 0x00001C, 0x000026, 0x000031, 0x00003B, 0x000046, 0x0C5F52, 0x19BE5F };
 CRGBPalette16 pacifica_palette_3 = { 0x000208, 0x00030E, 0x000514, 0x00061A, 0x000820, 0x000927, 0x000B2D, 0x000C33,
                                      0x000E39, 0x001040, 0x001450, 0x001860, 0x001C70, 0x002080, 0x1040BF, 0x2060FF };
-
 
 void pacifica_loop() {
   // Increment the four "color index start" counters, one for each wave layer.
@@ -228,17 +240,28 @@ void pacifica_deepen_colors() {
   }
 }
 
-/**
- * @brief Effect displayed when no RX found.
- *
- * Flickering red LEDs
- */
+/*************************************************************
+  Random Reds Effect
+*************************************************************/
 void randomReds() {
   fadeToBlackBy(leds, NUM_LEDS, 20);
   int pos = random(0, NUM_LEDS);
   leds[pos] += CHSV(255, 255, 255);
 }
 
+/*************************************************************
+  Chaneg All Color Effect
+*************************************************************/
+void changeAllColor() {
+  for (int i = 0; i < NUM_LEDS; i++) {
+    leds[i] = CHSV(data.hue, data.saturation, data.value);
+  }
+  FastLED.show();
+}
+
+/*************************************************************
+  Setup
+*************************************************************/
 
 void setup() {
   Serial.begin(115200);
@@ -265,38 +288,44 @@ void setup() {
   FastLED.show();
 }
 
+/*************************************************************
+  Loop
+*************************************************************/
 void loop() {
 
   static byte previousHue = data.hue;
 
-  //Display Solid Color
-  if (data.effect == CHANGE_COLOR && data.hue != previousHue) {
-    Serial.println("Change Color!!!");
-    previousHue = data.hue;
+  switch (data.effect) {
 
-    for (int i = 0; i < NUM_LEDS; i++) {
-      leds[i] = CHSV(data.hue, data.saturation, data.value);
-    }
+    case CHANGE_COLOR:
 
-    FastLED.show();
+      if (data.hue != previousHue) {
+        previousHue = data.hue;
 
-  } else if (data.effect == CYLON) {
-    cyclon();
+        changeAllColor();
+      }
+      break;
 
-  } else if (data.effect == PACIFICA) {
-    EVERY_N_MILLISECONDS(20) {
-      pacifica_loop();
-      FastLED.show();
-    }
+    case CYLON:
+      cyclon();
+      break;
 
-  } else if (data.effect == RANDOM_REDS) {
-    EVERY_N_MILLISECONDS(20) {
-      randomReds();
-      FastLED.show();
-    }
+    case PACIFICA:
+      EVERY_N_MILLISECONDS(20) {
+        pacifica_loop();
+        FastLED.show();
+      }
+      break;
+
+    case RANDOM_REDS:
+      EVERY_N_MILLISECONDS(20) {
+        randomReds();
+        FastLED.show();
+      }
+      break;
   }
 
-  //Ensure that CHANGE COLOR EFFECT  
+  //Ensure that CHANGE COLOR EFFECT only runs when a new color is selected
   if (data.effect != CHANGE_COLOR) {
     previousHue = NULL;
   }
