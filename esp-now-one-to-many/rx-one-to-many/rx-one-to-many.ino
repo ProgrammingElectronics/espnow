@@ -33,13 +33,13 @@ const int FRAMES_PER_SECOND = 120;
  You may have to change this based on the RX dev board type.
  pin 12 worked for me across the nodeMCU, Adafruit huzzah esp8266, and Wemos M1 clone 
  */
-const byte DATA_PIN = 12;
+const byte DATA_PIN = 12; // NEOpixel data pin
 
 // LED array
-const byte NUM_LEDS = 12;
+const byte NUM_LEDS = 12; // Adjust for different LED stip lengths
 CRGB leds[NUM_LEDS];
 
-// Where incoming data is stored
+// Where data from TX is stored -> this determings what gets displayed on the LEDs
 struct neopixel_data {
   byte effect = CHANGE_COLOR;
   bool display = true;
@@ -47,6 +47,36 @@ struct neopixel_data {
   byte saturation = 255;
   byte value = 255;
 } data;
+
+
+/*************************************************************
+  IMPORTANT!  Ideally each RX device gets its own unique SSID.
+              This way, in the list of SSIDs on the TX, you can 
+              determine which is which.  When uploading to a 
+              RX, change the names saved in SIID_NAMES array
+              to match your devices, and change thisDeviceSSID 
+              to the index of the name you want from the 
+              SSID_NAMES.  You'll have to change thisDeviceSSID
+              every time you upload to a different widget.
+
+              TODO: Set this up so it can be done over WiFi
+              with a phone app.
+*************************************************************/
+const byte thisDeviceSSID = 2;
+
+const byte MAX_PEERS = 20;
+const String SSID_NAMES[MAX_PEERS] = {
+  /* SSID names over 17 chars will be removed (in TX code) to fit on screen */
+  /* 0 */ "Ada_1",
+  /* 1 */ "Ada_2",
+  /* 2 */ "NodeMCU",
+  /* 3 */ "D1MiniClone"
+  /*      "|<-Max 17 char->|" */
+};
+
+/*************************************************************
+  ESPNOW Functions
+*************************************************************/
 
 // Init ESP Now with fallback
 void InitESPNow() {
@@ -61,17 +91,8 @@ void InitESPNow() {
 
 // config AP SSID
 void configDeviceAP() {
-  /*  Choose a specific SSID for THIS device.
-      It must start with "RX_" to be identified by the TX device.
-      
-      TODO ->Ideally, this might be an array of your target RX board names,
-      and then just change an index in stead of commenting out the ones you don't want. 
-  */
 
-  //String Prefix = "RX_Ada_1:";
-  String Prefix = "RX_Ada_2:";
-  //String Prefix = "RX_NodeMCU:";
-  //String Prefix = "RX_D1MiniClone:";
+  String Prefix = "RX_" + SSID_NAMES[thisDeviceSSID];
   String Mac = WiFi.macAddress();
   String SSID = Prefix;
   String Password = "123456789";
@@ -100,12 +121,20 @@ void OnDataRecv(uint8_t *mac_addr, uint8_t *dataIn, uint8_t data_len) {
   Serial.println("");
 }
 
+/*************************************************************
+  Helper Functions
+*************************************************************/
+
+//Fade all LEDs
 void fadeall() {
   for (int i = 0; i < NUM_LEDS; i++) {
     leds[i].nscale8(250);
   }
 }
 
+/*************************************************************
+  Cyclon Effect from FastLED library example code
+*************************************************************/
 void cyclon() {
   static uint8_t hue = 0;
 
@@ -116,7 +145,6 @@ void cyclon() {
     // Show the leds
     FastLED.show();
     // now that we've shown the leds, reset the i'th led to black
-    // leds[i] = CRGB::Black;
     fadeall();
     // Wait a little bit before we loop around and do it again
     delay(10);
@@ -136,9 +164,9 @@ void cyclon() {
   }
 }
 
-/*
-Pacifica Effect
-*/
+/*************************************************************
+  Pacifica Effect used from FastLED Library example code
+*************************************************************/
 
 CRGBPalette16 pacifica_palette_1 = { 0x000507, 0x000409, 0x00030B, 0x00030D, 0x000210, 0x000212, 0x000114, 0x000117,
                                      0x000019, 0x00001C, 0x000026, 0x000031, 0x00003B, 0x000046, 0x14554B, 0x28AA50 };
@@ -146,7 +174,6 @@ CRGBPalette16 pacifica_palette_2 = { 0x000507, 0x000409, 0x00030B, 0x00030D, 0x0
                                      0x000019, 0x00001C, 0x000026, 0x000031, 0x00003B, 0x000046, 0x0C5F52, 0x19BE5F };
 CRGBPalette16 pacifica_palette_3 = { 0x000208, 0x00030E, 0x000514, 0x00061A, 0x000820, 0x000927, 0x000B2D, 0x000C33,
                                      0x000E39, 0x001040, 0x001450, 0x001860, 0x001C70, 0x002080, 0x1040BF, 0x2060FF };
-
 
 void pacifica_loop() {
   // Increment the four "color index start" counters, one for each wave layer.
@@ -228,71 +255,96 @@ void pacifica_deepen_colors() {
   }
 }
 
-/**
- * @brief Effect displayed when no RX found.
- *
- * Flickering red LEDs
- */
+/*************************************************************
+  Random Reds Effect
+*************************************************************/
 void randomReds() {
   fadeToBlackBy(leds, NUM_LEDS, 20);
   int pos = random(0, NUM_LEDS);
   leds[pos] += CHSV(255, 255, 255);
 }
 
+/*************************************************************
+  Change All Color Effect
+*************************************************************/
+void changeAllColor() {
+  for (int i = 0; i < NUM_LEDS; i++) {
+    leds[i] = CHSV(data.hue, data.saturation, data.value);
+  }
+  FastLED.show();
+}
+
+/*************************************************************
+  Setup
+*************************************************************/
 
 void setup() {
   Serial.begin(115200);
 
-  // Set device in AP mode to begin with
-  WiFi.mode(WIFI_AP);
-  // configure device AP mode
-  configDeviceAP();
+  WiFi.mode(WIFI_AP); 
+  configDeviceAP(); 
+
   // This is the mac address of the Receiver in AP Mode
   Serial.print("AP MAC: ");
   Serial.println(WiFi.softAPmacAddress());
   Serial.print("SSID: ");
   Serial.println();
+  
   // Init ESPNow with a fallback logic
   InitESPNow();
+  
   // Once ESPNow is successfully Init, we will register for recv CB to
   // get recv packer info.
   esp_now_register_recv_cb(OnDataRecv);
 
+  // FastLED setup stuff
   FastLED.addLeds<WS2812B, DATA_PIN, GRB>(leds, NUM_LEDS);
   FastLED.setBrightness(84);
 
+  //Set the first LED to Red as a visual indicator the code is loaded
   leds[0] = CHSV(255, 255, 255);
   FastLED.show();
 }
 
+/*************************************************************
+  Loop
+*************************************************************/
 void loop() {
-  
+
   static byte previousHue = data.hue;
 
-  //Display Solid Color
-  if (data.effect == CHANGE_COLOR /*&& data.hue != previousHue*/) {
+  switch (data.effect) {
 
-    previousHue = data.hue;
+    case CHANGE_COLOR:
 
-    for (int i = 0; i < NUM_LEDS; i++) {
-      leds[i] = CHSV(data.hue, data.saturation, data.value);
-    }
+      if (data.hue != previousHue) {
+        previousHue = data.hue;
 
-    FastLED.show();
+        changeAllColor();
+      }
+      break;
 
-  } else if (data.effect == CYLON) {
-    cyclon();
+    case CYLON:
+      cyclon();
+      break;
 
-  } else if (data.effect == PACIFICA) {
-    EVERY_N_MILLISECONDS(20) {
-      pacifica_loop();
-      FastLED.show();
-    }
+    case PACIFICA:
+      EVERY_N_MILLISECONDS(20) {
+        pacifica_loop();
+        FastLED.show();
+      }
+      break;
 
-  } else if (data.effect == RANDOM_REDS) {
-    EVERY_N_MILLISECONDS(20) {
-      randomReds();
-      FastLED.show();
-    }
+    case RANDOM_REDS:
+      EVERY_N_MILLISECONDS(20) {
+        randomReds();
+        FastLED.show();
+      }
+      break;
+  }
+
+  //Ensure that CHANGE COLOR EFFECT only runs when a new color is selected
+  if (data.effect != CHANGE_COLOR) {
+    previousHue = NULL;
   }
 }
