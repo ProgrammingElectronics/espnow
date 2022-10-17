@@ -352,7 +352,6 @@ void IRAM_ATTR incrementButton() {
 
   if (incr_button_time - last_incr_button_time > DEBOUNCE) {
     currentSelection++;
-    Serial.println(currentSelection);
     last_incr_button_time = incr_button_time;
   }
 }
@@ -363,7 +362,6 @@ void IRAM_ATTR selectButton() {
 
   if (sel_button_time - last_sel_button_time > DEBOUNCE) {
     selectionMade = true;
-    Serial.println(selectionMade);
     last_sel_button_time = sel_button_time;
   }
 }
@@ -439,7 +437,7 @@ void loop() {
   static bool isBroadcasting = false;
 
   switch (currentState) {
-    case (MAIN_MENU):
+    case MAIN_MENU:
 
       limitSelection(MAIN_MENU_LENGTH);
 
@@ -467,7 +465,7 @@ void loop() {
 
       break;
 
-    case (LIST_PEERS):
+    case LIST_PEERS:
 
       // Limit Selection
       limitSelection(RXCnt + BACK_BUTTON_SPACER);
@@ -505,7 +503,7 @@ void loop() {
 
       break;
 
-    case (RESCAN):
+    case RESCAN:
 
       rescan();
 
@@ -514,7 +512,7 @@ void loop() {
 
       break;
 
-    case (SELECT_EFFECT):
+    case SELECT_EFFECT:
 
       // Limit Selection
       limitSelection(SELECT_EFFECT_LENGTH);
@@ -567,7 +565,7 @@ void loop() {
 
       break;
 
-    case (SOLID_COLOR):
+    case SOLID_COLOR:
 
       // Limit Selection
       limitSelection(COLOR_OPTIONS_LENGTH);
