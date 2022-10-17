@@ -42,25 +42,14 @@ char peerSSIDs[MAX_PEERS][MAX_SSID_DISPLAY_LEN];
 byte RXCnt = 0;  // Track the # od connected RXs
 
 
-// States -> The determine which cases are run
-const byte MAIN_MENU = 0;
-const byte LIST_PEERS = 1;
-const byte RESCAN = 2;
-const byte BROADCAST = 3;
-const byte SELECT_EFFECT = 4;
-const byte SOLID_COLOR = 5;
+// States -> These determine which cases are run
+enum STATES {MAIN_MENU, LIST_PEERS, RESCAN, BROADCAST, SELECT_EFFECT,SOLID_COLOR};
 
 // Main Menu
-const byte LIST_PEERS_SEL = 0;
-const byte RESCAN_SEL = 1;
-const byte BROADCAST_SEL = 2;
+enum MENU_MAIN {LIST_PEERS_SEL, RESCAN_SEL, BROADCAST_SEL};
 
 //Select Effect Menu Options
-const byte CHANGE_COLOR = 0;
-const byte CYLON = 1;
-const byte PACIFICA = 2;
-const byte RANDOM_REDS = 3;
-const byte TURN_OFF = 4;
+enum MENU_SELECT_EFFECT {CHANGE_COLOR, CYLON, PACIFICA, RANDOM_REDS, TURN_OFF};
 
 // List Peers menu options
 const byte NUM_PEERS_TO_DISPLAY = 3;
@@ -81,6 +70,21 @@ const byte COLOR_OPTIONS_LENGTH = 9;
 
 const char *COLOR_OPTIONS[COLOR_OPTIONS_LENGTH] = { "Red", "Orange", "Yellow", "Green", "Aqua", "Blue", "Purple", "Pink", "Turn Off" /*Turn Off must always be last option!*/ };
 const byte COLOR_VALUES[COLOR_OPTIONS_LENGTH] = { 0, 32, 64, 96, 128, 160, 192, 224, 255 };
+
+struct COLOR_VAL_PAIR {
+  const char *color_name;
+  const byte color_value;
+} COLOR_MENU[COLOR_OPTIONS_LENGTH] = {
+  { "Red", 0 },
+  { "Orange", 32 },
+  { "Yellow", 64 },
+  { "Green", 96 },
+  { "Aqua", 128 },
+  { "Blue", 160 },
+  { "Purple", 192 },
+  { "Pink", 224 },
+  { "Turn Off", 255 } /*Turn Off must always be last option and the color_value must always be unique among all color_value's listed here!*/
+};
 
 // Button pins and timing
 const byte INCREMENT_BUTTON = 5;
@@ -298,7 +302,7 @@ void sendData(byte RX_sel, bool broadcastMode) {
     Serial.print("Sending to SSID: ");
     Serial.println(peerSSIDs[RX_sel]);
   } else {
-    Serial.print("Broadcatsing to all");
+    Serial.print("Broadcasting to all");
   }
 
   /*
