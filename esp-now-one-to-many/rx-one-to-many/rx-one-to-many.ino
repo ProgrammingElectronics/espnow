@@ -22,10 +22,7 @@
 const byte CHANNEL = 1;
 
 // LED Effects
-const byte CHANGE_COLOR = 0;
-const byte CYLON = 1;
-const byte PACIFICA = 2;
-const byte RANDOM_REDS = 3;
+enum LED_effects {CHANGE_COLOR, CYLON, PACIFICA, RANDOM_REDS};
 
 const int FRAMES_PER_SECOND = 120;
 
@@ -43,7 +40,7 @@ CRGB leds[NUM_LEDS];
 struct neopixel_data {
   byte effect = CHANGE_COLOR;
   bool display = true;
-  byte hue = 100;
+  byte hue = 255;
   byte saturation = 255;
   byte value = 255;
 } data;
@@ -90,7 +87,7 @@ void InitESPNow() {
 }
 
 // config AP SSID
-void configDeviceAP() {
+bool configDeviceAP() {
 
   String Prefix = "RX_" + SSID_NAMES[thisDeviceSSID];
   String Mac = WiFi.macAddress();
@@ -104,6 +101,8 @@ void configDeviceAP() {
   } else {
     Serial.println("AP Config Success. Broadcasting with AP: " + String(SSID));
   }
+
+  return result;
 }
 
 // callback when data is recv from Transmitter
@@ -133,7 +132,7 @@ void fadeall() {
 }
 
 /*************************************************************
-  Cyclon Effect from FastLED library example code
+  Cylon Effect from FastLED library example code
 *************************************************************/
 void cyclon() {
   static uint8_t hue = 0;
@@ -174,40 +173,6 @@ CRGBPalette16 pacifica_palette_2 = { 0x000507, 0x000409, 0x00030B, 0x00030D, 0x0
                                      0x000019, 0x00001C, 0x000026, 0x000031, 0x00003B, 0x000046, 0x0C5F52, 0x19BE5F };
 CRGBPalette16 pacifica_palette_3 = { 0x000208, 0x00030E, 0x000514, 0x00061A, 0x000820, 0x000927, 0x000B2D, 0x000C33,
                                      0x000E39, 0x001040, 0x001450, 0x001860, 0x001C70, 0x002080, 0x1040BF, 0x2060FF };
-
-void pacifica_loop() {
-  // Increment the four "color index start" counters, one for each wave layer.
-  // Each is incremented at a different speed, and the speeds vary over time.
-  static uint16_t sCIStart1, sCIStart2, sCIStart3, sCIStart4;
-  static uint32_t sLastms = 0;
-  uint32_t ms = GET_MILLIS();
-  uint32_t deltams = ms - sLastms;
-  sLastms = ms;
-  uint16_t speedfactor1 = beatsin16(3, 179, 269);
-  uint16_t speedfactor2 = beatsin16(4, 179, 269);
-  uint32_t deltams1 = (deltams * speedfactor1) / 256;
-  uint32_t deltams2 = (deltams * speedfactor2) / 256;
-  uint32_t deltams21 = (deltams1 + deltams2) / 2;
-  sCIStart1 += (deltams1 * beatsin88(1011, 10, 13));
-  sCIStart2 -= (deltams21 * beatsin88(777, 8, 11));
-  sCIStart3 -= (deltams1 * beatsin88(501, 5, 7));
-  sCIStart4 -= (deltams2 * beatsin88(257, 4, 6));
-
-  // Clear out the LED array to a dim background blue-green
-  fill_solid(leds, NUM_LEDS, CRGB(2, 6, 10));
-
-  // Render each of four layers, with different scales and speeds, that vary over time
-  pacifica_one_layer(pacifica_palette_1, sCIStart1, beatsin16(3, 11 * 256, 14 * 256), beatsin8(10, 70, 130), 0 - beat16(301));
-  pacifica_one_layer(pacifica_palette_2, sCIStart2, beatsin16(4, 6 * 256, 9 * 256), beatsin8(17, 40, 80), beat16(401));
-  pacifica_one_layer(pacifica_palette_3, sCIStart3, 6 * 256, beatsin8(9, 10, 38), 0 - beat16(503));
-  pacifica_one_layer(pacifica_palette_3, sCIStart4, 5 * 256, beatsin8(8, 10, 28), beat16(601));
-
-  // Add brighter 'whitecaps' where the waves lines up more
-  pacifica_add_whitecaps();
-
-  // Deepen the blues and greens a bit
-  pacifica_deepen_colors();
-}
 
 // Add one layer of waves into the led array
 void pacifica_one_layer(CRGBPalette16 &p, uint16_t cistart, uint16_t wavescale, uint8_t bri, uint16_t ioff) {
@@ -255,6 +220,41 @@ void pacifica_deepen_colors() {
   }
 }
 
+void pacifica_loop() {
+  // Increment the four "color index start" counters, one for each wave layer.
+  // Each is incremented at a different speed, and the speeds vary over time.
+  static uint16_t sCIStart1, sCIStart2, sCIStart3, sCIStart4;
+  static uint32_t sLastms = 0;
+  uint32_t ms = GET_MILLIS();
+  uint32_t deltams = ms - sLastms;
+  sLastms = ms;
+  uint16_t speedfactor1 = beatsin16(3, 179, 269);
+  uint16_t speedfactor2 = beatsin16(4, 179, 269);
+  uint32_t deltams1 = (deltams * speedfactor1) / 256;
+  uint32_t deltams2 = (deltams * speedfactor2) / 256;
+  uint32_t deltams21 = (deltams1 + deltams2) / 2;
+  sCIStart1 += (deltams1 * beatsin88(1011, 10, 13));
+  sCIStart2 -= (deltams21 * beatsin88(777, 8, 11));
+  sCIStart3 -= (deltams1 * beatsin88(501, 5, 7));
+  sCIStart4 -= (deltams2 * beatsin88(257, 4, 6));
+
+  // Clear out the LED array to a dim background blue-green
+  fill_solid(leds, NUM_LEDS, CRGB(2, 6, 10));
+
+  // Render each of four layers, with different scales and speeds, that vary over time
+  pacifica_one_layer(pacifica_palette_1, sCIStart1, beatsin16(3, 11 * 256, 14 * 256), beatsin8(10, 70, 130), 0 - beat16(301));
+  pacifica_one_layer(pacifica_palette_2, sCIStart2, beatsin16(4, 6 * 256, 9 * 256), beatsin8(17, 40, 80), beat16(401));
+  pacifica_one_layer(pacifica_palette_3, sCIStart3, 6 * 256, beatsin8(9, 10, 38), 0 - beat16(503));
+  pacifica_one_layer(pacifica_palette_3, sCIStart4, 5 * 256, beatsin8(8, 10, 28), beat16(601));
+
+  // Add brighter 'whitecaps' where the waves lines up more
+  pacifica_add_whitecaps();
+
+  // Deepen the blues and greens a bit
+  pacifica_deepen_colors();
+}
+
+
 /*************************************************************
   Random Reds Effect
 *************************************************************/
@@ -282,7 +282,12 @@ void setup() {
   Serial.begin(115200);
 
   WiFi.mode(WIFI_AP); 
-  configDeviceAP(); 
+  bool configSuccess = configDeviceAP();
+
+  //Hold until device config succeeds
+  while(!configSuccess) {
+    configSuccess = configDeviceAP();
+  }
 
   // This is the mac address of the Receiver in AP Mode
   Serial.print("AP MAC: ");

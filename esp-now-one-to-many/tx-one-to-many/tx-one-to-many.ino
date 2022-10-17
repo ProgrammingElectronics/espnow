@@ -8,6 +8,8 @@
  * @copyright Copyright (c) 2022
  *
 
+Designed for screen and size -> SSD1306 128X64
+
  NOTE: To add effect
   -Create const for "effect name" in Select Effect Menu section
   -Add effect name in SEL_EFFECT_OPTIONS array (adjust size accordingly)
@@ -37,7 +39,7 @@ const byte PRINTSCANRESULTS = 1;
 const byte MAX_PEERS = 20;
 const byte MAX_SSID_DISPLAY_LEN = 20;
 char peerSSIDs[MAX_PEERS][MAX_SSID_DISPLAY_LEN];
-byte RXCnt = 0;
+byte RXCnt = 0;  // Track the # od connected RXs
 
 
 // States -> The determine which cases are run
@@ -185,9 +187,9 @@ void ScanForReceivers() {
         }
         receivers[RXCnt].channel = CHANNEL;  // pick a channel
         receivers[RXCnt].encrypt = 0;        // no encryption
-        
+
         //Remove the "RX_" from the beginning of the SSID and limit length for display
-        SSID = SSID.substring(3,MAX_SSID_DISPLAY_LEN);
+        SSID = SSID.substring(3, MAX_SSID_DISPLAY_LEN);
         SSID.toCharArray(peerSSIDs[RXCnt], SSID.length() + 1);  // This copies the appropriate chars strings into peerSSID[][]
 
         RXCnt++;
@@ -223,7 +225,7 @@ void manageReceiver() {
           Serial.print(":");
       }
 
-      Serial.print(" Status: ");
+      Serial.print(" Pair Status: ");
       // check if the peer exists
       bool exists = esp_now_is_peer_exist(receivers[i].peer_addr);
 
@@ -234,30 +236,7 @@ void manageReceiver() {
       } else {
         // Receiver not paired, attempt pair
         esp_err_t addStatus = esp_now_add_peer(&receivers[i]);
-
-        if (addStatus == ESP_OK) {
-          // Pair success
-          Serial.println("Pair success");
-
-        } else if (addStatus == ESP_ERR_ESPNOW_NOT_INIT) {
-          // How did we get so far!!
-          Serial.println("ESPNOW Not Init");
-
-        } else if (addStatus == ESP_ERR_ESPNOW_ARG) {
-          Serial.println("Add Peer - Invalid Argument");
-
-        } else if (addStatus == ESP_ERR_ESPNOW_FULL) {
-          Serial.println("Peer list full");
-
-        } else if (addStatus == ESP_ERR_ESPNOW_NO_MEM) {
-          Serial.println("Out of memory");
-
-        } else if (addStatus == ESP_ERR_ESPNOW_EXIST) {
-          Serial.println("Peer Exists");
-
-        } else {
-          Serial.println("Not sure what happened");
-        }
+        displayError(addStatus);
         delay(100);
       }
     }
@@ -268,31 +247,47 @@ void manageReceiver() {
 }
 
 void displayError(esp_err_t result) {
-  Serial.print("Send Status: ");
-  if (result == ESP_OK) {
-    Serial.println("Success");
 
-  } else if (result == ESP_ERR_ESPNOW_NOT_INIT) {
-    // How did we get so far!!
-    Serial.println("ESPNOW not Init.");
+  switch (result) {
 
-  } else if (result == ESP_ERR_ESPNOW_ARG) {
-    Serial.println("Invalid Argument");
+    case ESP_OK:
+      Serial.println("Success");
+      break;
 
-  } else if (result == ESP_ERR_ESPNOW_INTERNAL) {
-    Serial.println("Internal Error");
+    case ESP_ERR_ESPNOW_NOT_INIT:
+      // How did we get so far!!
+      Serial.println("ESPNOW not Init.");
+      break;
 
-  } else if (result == ESP_ERR_ESPNOW_NO_MEM) {
-    Serial.println("ESP_ERR_ESPNOW_NO_MEM");
+    case ESP_ERR_ESPNOW_ARG:
+      Serial.println("Invalid Argument-> ESP_ERR_ESPNOW_ARG");
+      break;
 
-  } else if (result == ESP_ERR_ESPNOW_NOT_FOUND) {
-    Serial.println("Peer not found.");
+    case ESP_ERR_ESPNOW_INTERNAL:
+      Serial.println("Internal Error-> ESP_ERR_ESPNOW_INTERNAL");
+      break;
 
-  } else {
-    Serial.println("Not sure what happened");
+    case ESP_ERR_ESPNOW_NO_MEM:
+      Serial.println("Out of memory-> ESP_ERR_ESPNOW_NO_MEM");
+      break;
+
+    case ESP_ERR_ESPNOW_NOT_FOUND:
+      Serial.println("Peer not found-> ESP_ERR_ESPNOW_NOT_FOUND");
+      break;
+
+    case ESP_ERR_ESPNOW_FULL:
+      Serial.println("Peer list full-> ESP_ERR_ESPNOW_FULL");
+      break;
+
+    case ESP_ERR_ESPNOW_EXIST:
+      Serial.println("Peer Exists-> ESP_ERR_ESPNOW_EXIST");
+      break;
+
+    default:
+      Serial.println("Not sure what happened");
+      break;
   }
 }
-
 
 void sendData(byte RX_sel, bool broadcastMode) {
 
@@ -313,6 +308,8 @@ void sendData(byte RX_sel, bool broadcastMode) {
     In either case, I am not sure it matters. 
    */
   esp_err_t result = esp_now_send(broadcastMode ? NULL : peer_addr, (uint8_t *)&data_out, sizeof(data_out));
+
+  Serial.print("Send Status: ");
   displayError(result);
 }
 
@@ -326,6 +323,8 @@ void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
   Serial.print("Last Packet Send Status: ");
   Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Delivery Success" : "Delivery Fail");
 }
+
+
 
 void displayMenu(const char *menuArray[], byte len) {
   u8g2.clearBuffer();  // clear the internal memory
@@ -409,11 +408,11 @@ void setup() {
   // Set device in STA mode to begin with
   WiFi.mode(WIFI_STA);
   Serial.println("Wifi Mode Set.");
-  
+
   // Init ESPNow with a fallback logic
   InitESPNow();
   Serial.println("ESPNow Init");
-  
+
   // Once ESPNow is successfully Init, we will register for Send CB to
   // get the status of Trasnmitted packet
   esp_now_register_send_cb(OnDataSent);
