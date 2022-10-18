@@ -1,7 +1,7 @@
 /**
  * @file tx-one-to-many.ino
  * @author Michael Cheich (michael@programmingelectronics.com)
- * @brief espnow example where one tranmsitter send individual messages to multiple receivers
+ * @brief espnow example for a NEOpixel controller.  One transmitter controls multiple receivers. This is the TX code.
  * @version 0.1
  * @date 2022-09-12
  *
@@ -28,53 +28,64 @@ Designed for screen and size -> SSD1306 128X64
 #include <Wire.h>
 #endif
 
+#define CHANNEL 1
+#define PRINTSCANRESULTS 1
+
 // RX information and storage
-const byte NUMRECEIVERS = 20;
+#define NUMRECEIVERS 20
 esp_now_peer_info_t receivers[NUMRECEIVERS] = {};
 
-const byte CHANNEL = 1;
-const byte PRINTSCANRESULTS = 1;
-
 // Store the SSID of each connected network
-const byte MAX_PEERS = 20;
-const byte MAX_SSID_DISPLAY_LEN = 20;
+#define MAX_PEERS 20
+#define MAX_SSID_DISPLAY_LEN 20
 char peerSSIDs[MAX_PEERS][MAX_SSID_DISPLAY_LEN];
-byte RXCnt = 0;  // Track the # od connected RXs
-
+byte RXCnt = 0;  // Track the # of connected RXs
 
 // States -> These determine which cases are run
-enum STATES {MAIN_MENU, LIST_PEERS, RESCAN, BROADCAST, SELECT_EFFECT,SOLID_COLOR};
+enum STATES { MAIN_MENU,
+              LIST_PEERS,
+              RESCAN,
+              BROADCAST,
+              SELECT_EFFECT,
+              SOLID_COLOR };
 
 // Main Menu
-enum MENU_MAIN {LIST_PEERS_SEL, RESCAN_SEL, BROADCAST_SEL};
+enum MENU_MAIN { LIST_PEERS_SEL,
+                 RESCAN_SEL,
+                 BROADCAST_SEL };
 
 //Select Effect Menu Options
-enum MENU_SELECT_EFFECT {CHANGE_COLOR, CYLON, PACIFICA, RANDOM_REDS, TURN_OFF};
+enum MENU_SELECT_EFFECT { CHANGE_COLOR,
+                          CYLON,
+                          PACIFICA,
+                          RANDOM_REDS,
+                          TURN_OFF };
 
 // List Peers menu options
-const byte NUM_PEERS_TO_DISPLAY = 3;
-const byte BACK_BUTTON_SPACER = 1;
-const byte NUM_MENU_ITEMS_TO_DISPLAY = 3;
+#define NUM_PEERS_TO_DISPLAY 3
+#define BACK_BUTTON_SPACER 1
+#define NUM_MENU_ITEMS_TO_DISPLAY 3
 
 // Formatting for display
-const byte LINE_SPACING = 5;  // space between each line
+#define LINE_SPACING 5  // space between each line
 
 // Display Menus
-const byte MAIN_MENU_LENGTH = 3;
+#define MAIN_MENU_LENGTH 3
 const char *MAIN_MENU_OPTIONS[MAIN_MENU_LENGTH] = { "1. List Peers", "2. ReScan", "3. Broadcast" };
 
-const byte SELECT_EFFECT_LENGTH = 6;
+#define SELECT_EFFECT_LENGTH 6
 const char *SEL_EFFECT_OPTIONS[SELECT_EFFECT_LENGTH] = { "1. Change Color", "2. Cyclon", "3. Pacifica", "4. Random Reds", "5. Turn Off", "6. Back" };
 
-const byte COLOR_OPTIONS_LENGTH = 9;
+#define COLOR_OPTIONS_LENGTH 8
+const char *COLOR_OPTIONS[COLOR_OPTIONS_LENGTH];  //Initialized in setup, this array holds the color_name's specificed below
 
-const char *COLOR_OPTIONS[COLOR_OPTIONS_LENGTH] = { "Red", "Orange", "Yellow", "Green", "Aqua", "Blue", "Purple", "Pink", "Turn Off" /*Turn Off must always be last option!*/ };
-const byte COLOR_VALUES[COLOR_OPTIONS_LENGTH] = { 0, 32, 64, 96, 128, 160, 192, 224, 255 };
+//Solid color options
+#define TURN_OFF_COLOR 42 /* Reserved value used to trigger turning off all LEDs, cannot be used as color_value below*/
 
 struct COLOR_VAL_PAIR {
   const char *color_name;
   const byte color_value;
-} COLOR_MENU[COLOR_OPTIONS_LENGTH] = {
+} const COLOR_MENU[COLOR_OPTIONS_LENGTH] = {
   { "Red", 0 },
   { "Orange", 32 },
   { "Yellow", 64 },
@@ -82,20 +93,19 @@ struct COLOR_VAL_PAIR {
   { "Aqua", 128 },
   { "Blue", 160 },
   { "Purple", 192 },
-  { "Pink", 224 },
-  { "Turn Off", 255 } /*Turn Off must always be last option and the color_value must always be unique among all color_value's listed here!*/
+  { "Pink", 224 }
 };
 
-// Button pins and timing
-const byte INCREMENT_BUTTON = 5;
-const byte SELECT_BUTTON = 6;
-const int DEBOUNCE = 250;
+// Button pins
+#define INCREMENT_BUTTON 5
+#define SELECT_BUTTON 6
 
 // Track user button presses
 volatile byte currentSelection = 0;
 volatile bool selectionMade = false;
 
 // Keep track of the timing of for button debounce done in interrupts
+#define DEBOUNCE 250
 volatile unsigned long incr_button_time = 0;
 volatile unsigned long sel_button_time = 0;
 volatile unsigned long last_incr_button_time = 0;
@@ -114,11 +124,12 @@ struct neopixel_data {
 U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* clock=*/SCL, /* data=*/SDA, /* reset=*/U8X8_PIN_NONE);  // High speed I2C
 
 /****************************************************************
-  ESPNOW FUNCTIONS
+  ESPNOW Functions
 *****************************************************************/
 
 // Init ESP Now with fallback
 void InitESPNow() {
+
   WiFi.disconnect();
 
   if (esp_now_init() == ESP_OK) {
@@ -133,6 +144,7 @@ void InitESPNow() {
 
 // Scan for receivers in AP mode
 void ScanForReceivers() {
+
   int8_t scanResults = WiFi.scanNetworks();
   // reset receivers
   memset(receivers, 0, sizeof(receivers));
@@ -319,6 +331,7 @@ void sendData(byte RX_sel, bool broadcastMode) {
 
 // callback when data is sent from Transmitter to Receiver
 void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
+
   char macStr[18];
   snprintf(macStr, sizeof(macStr), "%02x:%02x:%02x:%02x:%02x:%02x",
            mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
@@ -328,9 +341,12 @@ void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
   Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Delivery Success" : "Delivery Fail");
 }
 
-
+/****************************************************************
+  OLED Display Functions
+*****************************************************************/
 
 void displayMenu(const char *menuArray[], byte len) {
+
   u8g2.clearBuffer();  // clear the internal memory
 
   int spacing = LINE_SPACING + u8g2.getAscent() + abs(u8g2.getDescent());
@@ -348,7 +364,7 @@ void displayMenu(const char *menuArray[], byte len) {
 }
 
 /****************************************************************
-  INTERRUPT SERVICE ROUTINES for button presses
+  ISR's (Interrupt Service Routines) for button presses
 *****************************************************************/
 void IRAM_ATTR incrementButton() {
 
@@ -371,10 +387,11 @@ void IRAM_ATTR selectButton() {
 }
 
 /****************************************************************
-  CASE FUNCTIONS
+  Swicth-case functions
 *****************************************************************/
 
 void rescan() {
+
   u8g2.clearBuffer();
   u8g2.drawButtonUTF8(1, 10, U8G2_BTN_INV, 0, 2, 2, "Scanning...");
   u8g2.sendBuffer();
@@ -384,7 +401,7 @@ void rescan() {
 }
 
 /****************************************************************
-  HELPER FUNCTIONS
+  Helper functions
 *****************************************************************/
 
 void limitSelection(uint8_t max_selection) {
@@ -399,6 +416,7 @@ void limitSelection(uint8_t max_selection) {
 *****************************************************************/
 
 void setup() {
+
   Serial.begin(115200);
 
   pinMode(INCREMENT_BUTTON, INPUT_PULLUP);
@@ -426,6 +444,12 @@ void setup() {
 
   u8g2.begin();
   u8g2.setFont(u8g2_font_7x13B_tf);  // choose a suitable font
+
+  //Create menu for display on OLED for CHANGE COLOR sub menu
+  for (int i = 0; i < COLOR_OPTIONS_LENGTH; i++) {
+    COLOR_OPTIONS[i] = COLOR_MENU[i].color_name;
+  }
+
   Serial.print("Setup Complete");
 }
 
@@ -447,6 +471,7 @@ void loop() {
 
       // Display Menu
       if (previousSelection != currentSelection) {
+
         displayMenu(MAIN_MENU_OPTIONS, MAIN_MENU_LENGTH);
         previousSelection = currentSelection;
       }
@@ -454,16 +479,21 @@ void loop() {
       // Handle selections
       if (selectionMade) {
 
-        if (LIST_PEERS_SEL == currentSelection) {
-          currentState = LIST_PEERS;
-          isBroadcasting = false;
+        switch (currentSelection) {
 
-        } else if (RESCAN_SEL == currentSelection) {
-          currentState = RESCAN;
+          case LIST_PEERS_SEL:
+            currentState = LIST_PEERS;
+            isBroadcasting = false;
+            break;
 
-        } else if (BROADCAST_SEL == currentSelection) {
-          currentState = SELECT_EFFECT;
-          isBroadcasting = true;
+          case RESCAN_SEL:
+            currentState = RESCAN;
+            break;
+
+          case BROADCAST_SEL:
+            currentState = SELECT_EFFECT;
+            isBroadcasting = true;
+            break;
         }
       }
 
@@ -529,39 +559,40 @@ void loop() {
       // Handle selection
       if (selectionMade) {
 
-        if ((SELECT_EFFECT_LENGTH - 1) == currentSelection /*Back Button Pressed*/) {
-          currentState = isBroadcasting ? MAIN_MENU : LIST_PEERS;
-          currentSelection = 0;  // Start at first menu item
+        switch (currentSelection) {
 
-        } else if (CHANGE_COLOR == currentSelection) {
+          case (SELECT_EFFECT_LENGTH - 1): /*Back Button Pressed*/
+            currentState = isBroadcasting ? MAIN_MENU : LIST_PEERS;
+            currentSelection = 0;  // Start at first menu item
+            break;
 
-          currentState = SOLID_COLOR;
-          previousSelection = currentSelection + 1;  // Make sure new menu is displayed
+          case CHANGE_COLOR:
+            currentState = SOLID_COLOR;
+            previousSelection = currentSelection + 1;  // Make sure new menu is displayed
+            break;
 
-        } else if (CYLON == currentSelection) {
+          case CYLON:
+            data_out.effect = CYLON;
+            sendData(RX_selected, isBroadcasting);
+            break;
 
-          data_out.effect = CYLON;
-          sendData(RX_selected, isBroadcasting);
+          case PACIFICA:
+            data_out.effect = PACIFICA;
+            sendData(RX_selected, isBroadcasting);
+            break;
 
-        } else if (PACIFICA == currentSelection) {
+          case RANDOM_REDS:
+            data_out.effect = RANDOM_REDS;
+            sendData(RX_selected, isBroadcasting);
+            break;
 
-          data_out.effect = PACIFICA;
-          sendData(RX_selected, isBroadcasting);
-
-        } else if (RANDOM_REDS == currentSelection) {
-
-          data_out.effect = RANDOM_REDS;
-          sendData(RX_selected, isBroadcasting);
-
-        } else if (TURN_OFF == currentSelection) {
-
-          data_out.effect = CHANGE_COLOR;
-
-          data_out.hue = 255;  // This value needs to be different then the previous hue sent to RX, or RX will not adjust
-          //Adjust saturation and value to zero if "Turn Off" selected
-          data_out.saturation = 0;
-          data_out.value = 0;
-          sendData(RX_selected, isBroadcasting);
+          case TURN_OFF:
+            data_out.effect = CHANGE_COLOR;
+            data_out.hue = TURN_OFF_COLOR;
+            data_out.saturation = 0;
+            data_out.value = 0;
+            sendData(RX_selected, isBroadcasting);
+            break;
         }
 
         selectionMade = false;
@@ -581,11 +612,11 @@ void loop() {
         previousSelection = currentSelection;
 
         data_out.effect = CHANGE_COLOR;
-        data_out.hue = COLOR_VALUES[currentSelection];
+        data_out.hue = COLOR_MENU[currentSelection].color_value;
 
         //Adjust saturation and value to zero if "Turn Off" selected
-        data_out.saturation = currentSelection == COLOR_OPTIONS_LENGTH - 1 ? 0 : 255;
-        data_out.value = currentSelection == COLOR_OPTIONS_LENGTH - 1 ? 0 : 255;
+        data_out.saturation = 255;
+        data_out.value = 255;
         sendData(RX_selected, isBroadcasting);
       }
 
