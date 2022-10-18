@@ -1,7 +1,7 @@
 /**
  * @file rx-one-to-many.ino
  * @author Michael Cheich (micheal@programmingelectronics.com)
- * @brief
+ * @brief espnow example for a NEOpixel controller.  One transmitter controls multiple receivers. This is the RX code.
  * @version 0.1
  * @date 2022-09-12
  *
@@ -19,35 +19,33 @@
 #include <espnow.h>
 #include <ESP8266WiFi.h>
 
-const byte CHANNEL = 1;
+#define CHANNEL 1
 
-// LED Effects
-const byte CHANGE_COLOR = 0;
-const byte CYLON = 1;
-const byte PACIFICA = 2;
-const byte RANDOM_REDS = 3;
-
-const int FRAMES_PER_SECOND = 120;
-
-/* pins
+/* Pins
  You may have to change this based on the RX dev board type.
  pin 12 worked for me across the nodeMCU, Adafruit huzzah esp8266, and Wemos M1 clone 
  */
-const byte DATA_PIN = 12; // NEOpixel data pin
+#define DATA_PIN 12  // NEOpixel data pin
+
+// LED Effects
+enum LED_effects { CHANGE_COLOR,
+                   CYLON,
+                   PACIFICA,
+                   RANDOM_REDS };
+#define FRAMES_PER_SECOND 120
 
 // LED array
-const byte NUM_LEDS = 12; // Adjust for different LED stip lengths
+#define NUM_LEDS 12  // Adjust for different LED stip lengths
 CRGB leds[NUM_LEDS];
 
-// Where data from TX is stored -> this determings what gets displayed on the LEDs
+// Where data from TX is stored -> this determines what gets displayed on the LEDs
 struct neopixel_data {
   byte effect = CHANGE_COLOR;
   bool display = true;
-  byte hue = 100;
+  byte hue = 42;
   byte saturation = 255;
   byte value = 255;
 } data;
-
 
 /*************************************************************
   IMPORTANT!  Ideally each RX device gets its own unique SSID.
@@ -62,9 +60,8 @@ struct neopixel_data {
               TODO: Set this up so it can be done over WiFi
               with a phone app.
 *************************************************************/
-const byte thisDeviceSSID = 2;
-
-const byte MAX_PEERS = 20;
+#define thisDeviceSSID 3
+#define MAX_PEERS 20
 const String SSID_NAMES[MAX_PEERS] = {
   /* SSID names over 17 chars will be removed (in TX code) to fit on screen */
   /* 0 */ "Ada_1",
@@ -80,6 +77,7 @@ const String SSID_NAMES[MAX_PEERS] = {
 
 // Init ESP Now with fallback
 void InitESPNow() {
+
   WiFi.disconnect();
   if (esp_now_init() == ERR_OK) {
     Serial.println("ESPNow Init Success");
@@ -90,7 +88,7 @@ void InitESPNow() {
 }
 
 // config AP SSID
-void configDeviceAP() {
+bool configDeviceAP() {
 
   String Prefix = "RX_" + SSID_NAMES[thisDeviceSSID];
   String Mac = WiFi.macAddress();
@@ -104,6 +102,8 @@ void configDeviceAP() {
   } else {
     Serial.println("AP Config Success. Broadcasting with AP: " + String(SSID));
   }
+
+  return result;
 }
 
 // callback when data is recv from Transmitter
@@ -127,15 +127,17 @@ void OnDataRecv(uint8_t *mac_addr, uint8_t *dataIn, uint8_t data_len) {
 
 //Fade all LEDs
 void fadeall() {
+
   for (int i = 0; i < NUM_LEDS; i++) {
     leds[i].nscale8(250);
   }
 }
 
 /*************************************************************
-  Cyclon Effect from FastLED library example code
+  Cylon Effect from FastLED library example code
 *************************************************************/
 void cyclon() {
+
   static uint8_t hue = 0;
 
   // First slide the led in one direction
@@ -175,7 +177,56 @@ CRGBPalette16 pacifica_palette_2 = { 0x000507, 0x000409, 0x00030B, 0x00030D, 0x0
 CRGBPalette16 pacifica_palette_3 = { 0x000208, 0x00030E, 0x000514, 0x00061A, 0x000820, 0x000927, 0x000B2D, 0x000C33,
                                      0x000E39, 0x001040, 0x001450, 0x001860, 0x001C70, 0x002080, 0x1040BF, 0x2060FF };
 
+// Add one layer of waves into the led array
+void pacifica_one_layer(CRGBPalette16 &p, uint16_t cistart, uint16_t wavescale, uint8_t bri, uint16_t ioff) {
+
+  uint16_t ci = cistart;
+  uint16_t waveangle = ioff;
+  uint16_t wavescale_half = (wavescale / 2) + 20;
+
+  for (uint16_t i = 0; i < NUM_LEDS; i++) {
+    waveangle += 250;
+    uint16_t s16 = sin16(waveangle) + 32768;
+    uint16_t cs = scale16(s16, wavescale_half) + wavescale_half;
+    ci += cs;
+    uint16_t sindex16 = sin16(ci) + 32768;
+    uint8_t sindex8 = scale16(sindex16, 240);
+    CRGB c = ColorFromPalette(p, sindex8, bri, LINEARBLEND);
+    leds[i] += c;
+  }
+}
+
+// Add extra 'white' to areas where the four layers of light have lined up brightly
+void pacifica_add_whitecaps() {
+
+  uint8_t basethreshold = beatsin8(9, 55, 65);
+  uint8_t wave = beat8(7);
+
+  for (uint16_t i = 0; i < NUM_LEDS; i++) {
+    uint8_t threshold = scale8(sin8(wave), 20) + basethreshold;
+    wave += 7;
+    uint8_t l = leds[i].getAverageLight();
+
+    if (l > threshold) {
+      uint8_t overage = l - threshold;
+      uint8_t overage2 = qadd8(overage, overage);
+      leds[i] += CRGB(overage, overage2, qadd8(overage2, overage2));
+    }
+  }
+}
+
+// Deepen the blues and greens
+void pacifica_deepen_colors() {
+
+  for (uint16_t i = 0; i < NUM_LEDS; i++) {
+    leds[i].blue = scale8(leds[i].blue, 145);
+    leds[i].green = scale8(leds[i].green, 200);
+    leds[i] |= CRGB(2, 5, 7);
+  }
+}
+
 void pacifica_loop() {
+
   // Increment the four "color index start" counters, one for each wave layer.
   // Each is incremented at a different speed, and the speeds vary over time.
   static uint16_t sCIStart1, sCIStart2, sCIStart3, sCIStart4;
@@ -209,56 +260,11 @@ void pacifica_loop() {
   pacifica_deepen_colors();
 }
 
-// Add one layer of waves into the led array
-void pacifica_one_layer(CRGBPalette16 &p, uint16_t cistart, uint16_t wavescale, uint8_t bri, uint16_t ioff) {
-  uint16_t ci = cistart;
-  uint16_t waveangle = ioff;
-  uint16_t wavescale_half = (wavescale / 2) + 20;
-
-  for (uint16_t i = 0; i < NUM_LEDS; i++) {
-    waveangle += 250;
-    uint16_t s16 = sin16(waveangle) + 32768;
-    uint16_t cs = scale16(s16, wavescale_half) + wavescale_half;
-    ci += cs;
-    uint16_t sindex16 = sin16(ci) + 32768;
-    uint8_t sindex8 = scale16(sindex16, 240);
-    CRGB c = ColorFromPalette(p, sindex8, bri, LINEARBLEND);
-    leds[i] += c;
-  }
-}
-
-// Add extra 'white' to areas where the four layers of light have lined up brightly
-void pacifica_add_whitecaps() {
-  uint8_t basethreshold = beatsin8(9, 55, 65);
-  uint8_t wave = beat8(7);
-
-  for (uint16_t i = 0; i < NUM_LEDS; i++) {
-    uint8_t threshold = scale8(sin8(wave), 20) + basethreshold;
-    wave += 7;
-    uint8_t l = leds[i].getAverageLight();
-
-    if (l > threshold) {
-      uint8_t overage = l - threshold;
-      uint8_t overage2 = qadd8(overage, overage);
-      leds[i] += CRGB(overage, overage2, qadd8(overage2, overage2));
-    }
-  }
-}
-
-// Deepen the blues and greens
-void pacifica_deepen_colors() {
-
-  for (uint16_t i = 0; i < NUM_LEDS; i++) {
-    leds[i].blue = scale8(leds[i].blue, 145);
-    leds[i].green = scale8(leds[i].green, 200);
-    leds[i] |= CRGB(2, 5, 7);
-  }
-}
-
 /*************************************************************
   Random Reds Effect
 *************************************************************/
 void randomReds() {
+
   fadeToBlackBy(leds, NUM_LEDS, 20);
   int pos = random(0, NUM_LEDS);
   leds[pos] += CHSV(255, 255, 255);
@@ -268,6 +274,7 @@ void randomReds() {
   Change All Color Effect
 *************************************************************/
 void changeAllColor() {
+
   for (int i = 0; i < NUM_LEDS; i++) {
     leds[i] = CHSV(data.hue, data.saturation, data.value);
   }
@@ -279,20 +286,26 @@ void changeAllColor() {
 *************************************************************/
 
 void setup() {
+
   Serial.begin(115200);
 
-  WiFi.mode(WIFI_AP); 
-  configDeviceAP(); 
+  WiFi.mode(WIFI_AP);
+  bool configSuccess = configDeviceAP();
+
+  //Hold until device config succeeds
+  while (!configSuccess) {
+    configSuccess = configDeviceAP();
+  }
 
   // This is the mac address of the Receiver in AP Mode
   Serial.print("AP MAC: ");
   Serial.println(WiFi.softAPmacAddress());
   Serial.print("SSID: ");
   Serial.println();
-  
+
   // Init ESPNow with a fallback logic
   InitESPNow();
-  
+
   // Once ESPNow is successfully Init, we will register for recv CB to
   // get recv packer info.
   esp_now_register_recv_cb(OnDataRecv);
@@ -311,7 +324,7 @@ void setup() {
 *************************************************************/
 void loop() {
 
-  static byte previousHue = data.hue;
+  static byte previousHue = 0;
 
   switch (data.effect) {
 
@@ -319,7 +332,6 @@ void loop() {
 
       if (data.hue != previousHue) {
         previousHue = data.hue;
-
         changeAllColor();
       }
       break;
@@ -345,6 +357,6 @@ void loop() {
 
   //Ensure that CHANGE COLOR EFFECT only runs when a new color is selected
   if (data.effect != CHANGE_COLOR) {
-    previousHue = NULL;
+    previousHue = 255;
   }
 }
