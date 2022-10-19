@@ -20,6 +20,7 @@ Designed for screen and size -> SSD1306 128X64
 #include <esp_now.h>
 #include <WiFi.h>
 #include <U8g2lib.h>
+#include <neo_pixel_controller_shared.h>
 
 #ifdef U8X8_HAVE_HW_SPI
 #include <SPI.h>
@@ -28,7 +29,6 @@ Designed for screen and size -> SSD1306 128X64
 #include <Wire.h>
 #endif
 
-#define CHANNEL 1
 #define PRINTSCANRESULTS 1
 
 // RX information and storage
@@ -36,7 +36,6 @@ Designed for screen and size -> SSD1306 128X64
 esp_now_peer_info_t receivers[NUMRECEIVERS] = {};
 
 // Store the SSID of each connected network
-#define MAX_PEERS 20
 #define MAX_SSID_DISPLAY_LEN 20
 char peerSSIDs[MAX_PEERS][MAX_SSID_DISPLAY_LEN];
 byte RXCnt = 0;  // Track the # of connected RXs
@@ -111,14 +110,7 @@ volatile unsigned long sel_button_time = 0;
 volatile unsigned long last_incr_button_time = 0;
 volatile unsigned long last_sel_button_time = 0;
 
-// This is data structure sent to each RX
-struct neopixel_data {
-  byte effect;
-  bool display = true;
-  byte hue = 100;
-  byte saturation = 255;
-  byte value = 255;
-} data_out;
+struct neopixel_data data_out;
 
 // Display
 U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* clock=*/SCL, /* data=*/SDA, /* reset=*/U8X8_PIN_NONE);  // High speed I2C

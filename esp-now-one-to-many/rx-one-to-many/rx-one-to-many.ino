@@ -18,8 +18,7 @@
 #include <FastLED.h>
 #include <espnow.h>
 #include <ESP8266WiFi.h>
-
-#define CHANNEL 1
+#include <shared.h>
 
 /* Pins
  You may have to change this based on the RX dev board type.
@@ -32,20 +31,14 @@ enum LED_effects { CHANGE_COLOR,
                    CYLON,
                    PACIFICA,
                    RANDOM_REDS };
+                   
 #define FRAMES_PER_SECOND 120
 
 // LED array
 #define NUM_LEDS 12  // Adjust for different LED stip lengths
 CRGB leds[NUM_LEDS];
 
-// Where data from TX is stored -> this determines what gets displayed on the LEDs
-struct neopixel_data {
-  byte effect = CHANGE_COLOR;
-  bool display = true;
-  byte hue = 42;
-  byte saturation = 255;
-  byte value = 255;
-} data;
+struct neopixel_data data;
 
 /*************************************************************
   IMPORTANT!  Ideally each RX device gets its own unique SSID.
@@ -61,7 +54,6 @@ struct neopixel_data {
               with a phone app.
 *************************************************************/
 #define thisDeviceSSID 3
-#define MAX_PEERS 20
 const String SSID_NAMES[MAX_PEERS] = {
   /* SSID names over 17 chars will be removed (in TX code) to fit on screen */
   /* 0 */ "Ada_1",
