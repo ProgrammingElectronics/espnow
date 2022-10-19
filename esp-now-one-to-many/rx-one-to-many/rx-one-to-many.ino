@@ -18,7 +18,7 @@
 #include <FastLED.h>
 #include <espnow.h>
 #include <ESP8266WiFi.h>
-#include <shared.h>
+#include <neo_pixel_controller_shared.h>
 
 /* Pins
  You may have to change this based on the RX dev board type.
