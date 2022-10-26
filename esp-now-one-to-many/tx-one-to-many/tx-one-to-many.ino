@@ -20,7 +20,7 @@ Designed for screen and size -> SSD1306 128X64
 #include <esp_now.h>
 #include <WiFi.h>
 #include <U8g2lib.h>
-#include <neo_pixel_controller_shared.h>
+#include "neo_pixel_controller_shared.h"
 
 #ifdef U8X8_HAVE_HW_SPI
 #include <SPI.h>
@@ -41,7 +41,7 @@ char peerSSIDs[MAX_PEERS][MAX_SSID_DISPLAY_LEN];
 byte RXCnt = 0;  // Track the # of connected RXs
 
 // States -> These determine which cases are run
-enum STATES { MAIN_MENU,
+enum States { MAIN_MENU,
               LIST_PEERS,
               RESCAN,
               BROADCAST,
@@ -49,12 +49,12 @@ enum STATES { MAIN_MENU,
               SOLID_COLOR };
 
 // Main Menu
-enum MENU_MAIN { LIST_PEERS_SEL,
+enum MenuMain { LIST_PEERS_SEL,
                  RESCAN_SEL,
                  BROADCAST_SEL };
 
 //Select Effect Menu Options
-enum MENU_SELECT_EFFECT { CHANGE_COLOR,
+enum MenuSelectEffect { CHANGE_COLOR,
                           CYLON,
                           PACIFICA,
                           RANDOM_REDS,
@@ -70,30 +70,24 @@ enum MENU_SELECT_EFFECT { CHANGE_COLOR,
 
 // Display Menus
 #define MAIN_MENU_LENGTH 3
-const char *MAIN_MENU_OPTIONS[MAIN_MENU_LENGTH] = { "1. List Peers", "2. ReScan", "3. Broadcast" };
+const char *MainMenuOptions[MAIN_MENU_LENGTH] = { "1. List Peers", "2. ReScan", "3. Broadcast" };
 
 #define SELECT_EFFECT_LENGTH 6
-const char *SEL_EFFECT_OPTIONS[SELECT_EFFECT_LENGTH] = { "1. Change Color", "2. Cyclon", "3. Pacifica", "4. Random Reds", "5. Turn Off", "6. Back" };
+const char *SelEffectOptions[SELECT_EFFECT_LENGTH] = { "1. Change Color", "2. Cyclon", "3. Pacifica", "4. Random Reds", "5. Turn Off", "6. Back" };
 
 #define COLOR_OPTIONS_LENGTH 8
-const char *COLOR_OPTIONS[COLOR_OPTIONS_LENGTH];  //Initialized in setup, this array holds the color_name's specificed below
+const char *ColorOptions[COLOR_OPTIONS_LENGTH];  //Initialized in setup, this array holds the color_name's specificed below
 
 //Solid color options
 #define TURN_OFF_COLOR 42 /* Reserved value used to trigger turning off all LEDs, cannot be used as color_value below*/
 
-struct COLOR_VAL_PAIR {
-  const char *color_name;
-  const byte color_value;
-} const COLOR_MENU[COLOR_OPTIONS_LENGTH] = {
-  { "Red", 0 },
-  { "Orange", 32 },
-  { "Yellow", 64 },
-  { "Green", 96 },
-  { "Aqua", 128 },
-  { "Blue", 160 },
-  { "Purple", 192 },
-  { "Pink", 224 }
-};
+struct {
+  const char *ColorName[COLOR_OPTIONS_LENGTH];
+  const byte ColorValue[COLOR_OPTIONS_LENGTH];
+} ColorMenu = {
+  { "Red", "Orange", "Yellow", "Green", "Aqua", "Blue", "Purple", "Pink" },
+  {     0,       32,       64,      96,    128,    160,      192,    224 }
+}; 
 
 // Button pins
 #define INCREMENT_BUTTON 5
@@ -437,11 +431,6 @@ void setup() {
   u8g2.begin();
   u8g2.setFont(u8g2_font_7x13B_tf);  // choose a suitable font
 
-  //Create menu for display on OLED for CHANGE COLOR sub menu
-  for (int i = 0; i < COLOR_OPTIONS_LENGTH; i++) {
-    COLOR_OPTIONS[i] = COLOR_MENU[i].color_name;
-  }
-
   Serial.print("Setup Complete");
 }
 
@@ -464,7 +453,7 @@ void loop() {
       // Display Menu
       if (previousSelection != currentSelection) {
 
-        displayMenu(MAIN_MENU_OPTIONS, MAIN_MENU_LENGTH);
+        displayMenu(MainMenuOptions, MAIN_MENU_LENGTH);
         previousSelection = currentSelection;
       }
 
@@ -544,7 +533,7 @@ void loop() {
       limitSelection(SELECT_EFFECT_LENGTH);
 
       if (previousSelection != currentSelection) {
-        displayMenu(SEL_EFFECT_OPTIONS, SELECT_EFFECT_LENGTH);
+        displayMenu(SelEffectOptions, SELECT_EFFECT_LENGTH);
         previousSelection = currentSelection;
       }
 
@@ -600,11 +589,11 @@ void loop() {
       // Display menu and send color data
       if (previousSelection != currentSelection) {
 
-        displayMenu(COLOR_OPTIONS, COLOR_OPTIONS_LENGTH);
+        displayMenu(ColorMenu.ColorName, COLOR_OPTIONS_LENGTH);
         previousSelection = currentSelection;
 
         data_out.effect = CHANGE_COLOR;
-        data_out.hue = COLOR_MENU[currentSelection].color_value;
+        data_out.hue = ColorMenu.ColorValue[currentSelection];
 
         //Adjust saturation and value to zero if "Turn Off" selected
         data_out.saturation = 255;
