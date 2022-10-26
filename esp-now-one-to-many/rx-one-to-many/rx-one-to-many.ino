@@ -31,7 +31,7 @@ enum LED_effects { CHANGE_COLOR,
                    CYLON,
                    PACIFICA,
                    RANDOM_REDS };
-                   
+
 #define FRAMES_PER_SECOND 120
 
 // LED array
@@ -282,18 +282,26 @@ void setup() {
   Serial.begin(115200);
 
   WiFi.mode(WIFI_AP);
-  bool configSuccess = configDeviceAP();
 
-  //Hold until device config succeeds
-  while (!configSuccess) {
-    configSuccess = configDeviceAP();
+  //Make 10 attempts at device config
+  char buffer[40];
+  bool configSuccess = false;
+
+  for (int i = 0; i < 10 && !configSuccess; i++) {
+    sprintf(buffer, "\nAP Config attempt %d of %d", i + 1, 10);
+    Serial.println(buffer);
+    configSuccess = false;//configDeviceAP();
+    delay(100);
+  }
+
+  // If unsuccessful config, hold here forever, else continue
+  if (!configSuccess) {
+    while (1) {;}
   }
 
   // This is the mac address of the Receiver in AP Mode
   Serial.print("AP MAC: ");
   Serial.println(WiFi.softAPmacAddress());
-  Serial.print("SSID: ");
-  Serial.println();
 
   // Init ESPNow with a fallback logic
   InitESPNow();
